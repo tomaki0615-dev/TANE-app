@@ -4,6 +4,12 @@
 <meta charset="UTF-8">
 <title>種子島ガイド</title>
 
+<link rel="apple-touch-icon" href="icon.png">
+<link rel="icon" href="icon.png">
+
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+
 <style>
 body { font-family:sans-serif; margin:0; background:#f2f4f7; }
 
@@ -33,11 +39,13 @@ button {
   border-radius:12px;
   margin:5px;
   border:none;
+  cursor:pointer;
 }
 
 .row-btn {
   display:flex;
   gap:10px;
+  flex-wrap:wrap;
 }
 
 .tag-btn {
@@ -88,10 +96,10 @@ img {
 
 <div class="container">
 
-<!-- 追加 -->
 <button class="toggle-btn" onclick="toggleForm()">➕ スポット追加</button>
 
 <div id="formBox" class="form-box">
+
   <div>エリア</div>
   <div id="area-buttons"></div>
 
@@ -107,17 +115,14 @@ img {
   <button onclick="saveSpot()">保存</button>
 </div>
 
-<!-- 検索 -->
 <input type="text" id="search" placeholder="検索...">
 
-<!-- ⭐とAND OR（ここに移動） -->
 <div class="row-btn">
-  <button onclick="toggleFavFilter()">⭐ お気に入りだけ</button>
+  <button onclick="toggleFavFilter()">⭐ お気に入り</button>
   <button onclick="toggleMode()">AND / OR</button>
   <button onclick="exportData()">📤</button>
 </div>
 
-<!-- フィルター -->
 <div>
   <div>エリア</div>
   <div id="filter-area"></div>
@@ -133,9 +138,11 @@ img {
 </div>
 
 <script>
+// ===== 定義 =====
 const AREAS=["北部","中部","南部"];
 const TYPES=["カフェ","レストラン","パン","ホテル","スーパー","ドラッグストア","コンビニ","土産","個人商店","無人販売","港","空港","レンタカー","レジャー","温泉","神社","工場","家畜","公園","海岸","星空","宇宙","博物館","絶景","猫","知人友人・親戚","その他"];
 
+// ===== 状態 =====
 let spots=JSON.parse(localStorage.getItem("spots"))||[];
 let favorites=JSON.parse(localStorage.getItem("fav"))||[];
 
@@ -144,13 +151,26 @@ let filterArea="", filterTypes=[];
 let showFavOnly=false, isAndMode=true;
 let imageData="";
 
-// DOM先に取得（重要）
+// ===== DOM =====
+const formBox=document.getElementById("formBox");
 const areaButtons=document.getElementById("area-buttons");
 const typeButtons=document.getElementById("type-buttons");
 const filterAreaEl=document.getElementById("filter-area");
 const filterTypeEl=document.getElementById("filter-type");
+const spotList=document.getElementById("spot-list");
 
-// ボタン生成
+const nameInput=document.getElementById("name");
+const descInput=document.getElementById("desc");
+const searchInput=document.getElementById("search");
+const imageInput=document.getElementById("image");
+const preview=document.getElementById("preview");
+
+// ===== 折りたたみ =====
+function toggleForm(){
+  formBox.style.display = formBox.style.display==="none" ? "block" : "none";
+}
+
+// ===== ボタン生成 =====
 function createButtons(target, list, callback){
   list.forEach(item=>{
     const btn=document.createElement("span");
@@ -186,6 +206,7 @@ createButtons(filterTypeEl, TYPES, t=>{
   renderButtons(); render();
 });
 
+// ===== ボタン状態 =====
 function renderButtons(){
   document.querySelectorAll(".tag-btn").forEach(btn=>{
     const t=btn.innerText;
@@ -198,15 +219,11 @@ function renderButtons(){
   });
 }
 
-// 折りたたみ
-function toggleForm(){
-  formBox.style.display=formBox.style.display==="none"?"block":"none";
-}
-
-// 画像
-image.addEventListener("change",e=>{
+// ===== 画像 =====
+imageInput.addEventListener("change", e=>{
   const file=e.target.files[0];
   if(!file) return;
+
   const reader=new FileReader();
   reader.onload=()=>{
     imageData=reader.result;
@@ -216,28 +233,30 @@ image.addEventListener("change",e=>{
   reader.readAsDataURL(file);
 });
 
-// 保存
+// ===== 保存 =====
 function saveSpot(){
-  if(!name.value.trim()) return alert("名前必須");
+  const name=nameInput.value.trim();
+  if(!name) return alert("名前必須");
 
   const tags=[selectedArea,...selectedTypes].filter(Boolean);
 
   spots.push({
-    name:name.value,
-    desc:desc.value,
+    name,
+    desc:descInput.value,
     tags,
     img:imageData
   });
 
   localStorage.setItem("spots",JSON.stringify(spots));
+
   clearForm();
   render();
 }
 
-// 表示
+// ===== 表示 =====
 function render(){
-  const keyword=search.value.toLowerCase();
-  spot-list.innerHTML="";
+  const keyword=searchInput.value.toLowerCase();
+  spotList.innerHTML="";
 
   spots.filter(s=>{
     if(!s.name.toLowerCase().includes(keyword)) return false;
@@ -264,15 +283,16 @@ function render(){
         ${fav?"⭐":"☆"}
       </button>
     `;
-    document.getElementById("spot-list").appendChild(div);
+    spotList.appendChild(div);
   });
 }
 
-// その他
+// ===== その他 =====
 function toggleFavorite(name){
   favorites.includes(name)
     ? favorites=favorites.filter(f=>f!==name)
     : favorites.push(name);
+
   localStorage.setItem("fav",JSON.stringify(favorites));
   render();
 }
@@ -294,9 +314,9 @@ function exportData(){
 }
 
 function clearForm(){
-  name.value="";
-  desc.value="";
-  image.value="";
+  nameInput.value="";
+  descInput.value="";
+  imageInput.value="";
   preview.style.display="none";
   selectedArea="";
   selectedTypes=[];
@@ -304,8 +324,9 @@ function clearForm(){
   renderButtons();
 }
 
-// 初期化
-search.addEventListener("input",render);
+// ===== 初期化 =====
+searchInput.addEventListener("input",render);
+
 renderButtons();
 render();
 </script>
