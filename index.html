@@ -167,7 +167,7 @@ const TYPES=[
 ];
 
 /* =========================
-   DOM
+   DOM（ここ重要：タグ消失原因対策済み）
 ========================= */
 const nameEl=document.getElementById("name");
 const descEl=document.getElementById("desc");
@@ -175,10 +175,17 @@ const searchEl=document.getElementById("search");
 const imageEl=document.getElementById("image");
 const previewEl=document.getElementById("preview");
 
+const areaButtons=document.getElementById("area-buttons");
+const typeButtons=document.getElementById("type-buttons");
+const filterAreaEl=document.getElementById("filter-area");
+const filterTypeEl=document.getElementById("filter-type");
+const spotList=document.getElementById("spot-list");
+const formBox=document.getElementById("formBox");
+
 /* =========================
    状態
 ========================= */
-let state = {
+let state={
   spots: JSON.parse(localStorage.getItem("spots")) || [],
   favorites: JSON.parse(localStorage.getItem("fav")) || [],
 
@@ -198,14 +205,14 @@ let state = {
 };
 
 /* =========================
-   旧データ修復
+   旧データ互換
 ========================= */
 state.spots = state.spots.map(s=>{
   if(Array.isArray(s.tags)){
     return {
       ...s,
       tags:{
-        area:s.tags[0] || "",
+        area:s.tags[0]||"",
         types:s.tags.slice(1)
       }
     };
@@ -245,13 +252,13 @@ function toggleForm(){
 }
 
 /* =========================
-   ボタン
+   ボタン生成（ここ修正済み）
 ========================= */
 function createButtons(){
-  make(area-buttons,AREAS,"area");
-  make(type-buttons,TYPES,"type");
-  make(filter-area,AREAS,"filterArea");
-  make(filter-type,TYPES,"filterType");
+  make(areaButtons,AREAS,"area");
+  make(typeButtons,TYPES,"type");
+  make(filterAreaEl,AREAS,"filterArea");
+  make(filterTypeEl,TYPES,"filterType");
 }
 
 function make(target,list,mode){
@@ -329,7 +336,7 @@ function saveSpot(){
 }
 
 /* =========================
-   安全取得関数（AND/OR崩壊防止）
+   安全取得（AND/OR崩壊防止）
 ========================= */
 function getTypes(s){
   return Array.isArray(s.tags?.types) ? s.tags.types : [];
@@ -412,8 +419,7 @@ function render(){
         <h3>${s.name}</h3>
         <div>${s.desc||""}</div>
         <div style="font-size:12px;color:#666;">
-          ${getArea(s)}
-          ${(getTypes(s)).join(", ")}
+          ${getArea(s)} ${(getTypes(s)).join(", ")}
         </div>
         <button onclick="toggleFavorite('${s.name}')">
           ${fav?"⭐":"☆"}
