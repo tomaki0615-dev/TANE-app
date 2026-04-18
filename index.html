@@ -2,87 +2,74 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
+
+<!-- ⭐ これ超重要 -->
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
 <title>種子島ガイド</title>
 
 <link rel="apple-touch-icon" href="icon.png">
-<link rel="icon" href="icon.png">
-
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 
 <style>
 body {
-  font-family:sans-serif;
+  font-family:-apple-system, BlinkMacSystemFont;
   margin:0;
-  background:#f2f4f7;
-  font-size:16px;
+  background:#f9fafb;
+  font-size:17px;
 }
 
-/* ヘッダー固定 */
+/* ヘッダー */
 header {
   position:fixed;
   top:0;
-  left:0;
   width:100%;
-  background:#0f172a;
-  color:white;
-  padding:16px;
+  background:rgba(255,255,255,0.9);
+  backdrop-filter:blur(10px);
+  border-bottom:1px solid #ddd;
+  padding:14px;
   text-align:center;
-  font-size:20px;
   font-weight:bold;
   z-index:1000;
 }
 
-/* コンテナ */
+/* コンテンツ */
 .container {
-  padding:80px 8px 10px;
-  max-width:100%;
+  padding:70px 10px 80px;
 }
 
 /* 入力 */
 input, textarea {
   width:100%;
   padding:14px;
-  font-size:16px;
+  border-radius:12px;
+  border:1px solid #ddd;
   margin-bottom:10px;
-  border-radius:10px;
-  border:1px solid #ccc;
+  font-size:16px;
 }
 
 /* ボタン */
 button {
-  padding:16px 18px;
-  font-size:16px;
-  border-radius:12px;
+  padding:14px;
+  border-radius:14px;
   border:none;
   background:#e5e7eb;
-  cursor:pointer;
+  font-size:16px;
 }
 
-.row-btn {
+/* 下バー */
+.bottom-bar {
+  position:fixed;
+  bottom:0;
+  width:100%;
+  background:white;
+  border-top:1px solid #ddd;
   display:flex;
-  gap:8px;
 }
 
-.row-btn button {
+.bottom-bar button {
   flex:1;
+  background:none;
   font-weight:bold;
-}
-
-/* タグ */
-.tag-btn {
-  display:inline-block;
-  padding:10px 14px;
-  margin:4px;
-  border-radius:14px;
-  background:#e5e7eb;
-  cursor:pointer;
-  font-size:14px;
-}
-
-.tag-btn.active {
-  background:#2563eb;
-  color:white;
 }
 
 /* カード */
@@ -90,47 +77,40 @@ button {
   display:flex;
   gap:10px;
   background:white;
-  padding:10px;
-  margin-bottom:10px;
-  border-radius:12px;
-  align-items:center;
+  padding:12px;
+  margin-bottom:12px;
+  border-radius:16px;
+  box-shadow:0 2px 6px rgba(0,0,0,0.05);
 }
 
 .card img {
-  width:110px;
-  height:90px;
+  width:100px;
+  height:80px;
   object-fit:cover;
   border-radius:10px;
 }
 
-.card-content {
-  flex:1;
-}
-
-.card h3 {
+.card-content h3 {
   margin:0;
   font-size:18px;
-  font-weight:bold;
 }
 
 .card-content div {
   font-size:14px;
-  line-height:1.4;
 }
 
-/* 折りたたみ */
-.toggle-btn {
-  width:100%;
-  background:#2563eb;
+/* タグ */
+.tag-btn {
+  padding:8px 12px;
+  margin:4px;
+  border-radius:20px;
+  background:#eee;
+  display:inline-block;
+}
+
+.tag-btn.active {
+  background:#3b82f6;
   color:white;
-}
-
-.form-box {
-  display:none;
-  background:white;
-  padding:12px;
-  border-radius:12px;
-  margin-bottom:15px;
 }
 </style>
 </head>
@@ -141,174 +121,30 @@ button {
 
 <div class="container">
 
-<button class="toggle-btn" onclick="toggleForm()">➕ スポット追加</button>
-
-<div id="formBox" class="form-box">
-
-  <div>エリア</div>
-  <div id="area-buttons"></div>
-
-  <div>種類タグ</div>
-  <div id="type-buttons"></div>
-
-  <input id="name" placeholder="名前">
-  <textarea id="desc" placeholder="説明"></textarea>
-
-  <input type="file" id="image" accept="image/*">
-  <img id="preview" style="display:none; width:100%; border-radius:10px;">
-
-  <button onclick="saveSpot()">保存</button>
-</div>
-
-<input type="text" id="search" placeholder="検索...">
-
-<div class="row-btn">
-  <button onclick="toggleFavFilter()">⭐ お気に入り</button>
-  <button onclick="toggleMode()">AND / OR</button>
-  <button onclick="exportData()">📤</button>
-</div>
-
-<div>
-  <div>エリア</div>
-  <div id="filter-area"></div>
-
-  <div>種類タグ</div>
-  <div id="filter-type"></div>
-</div>
-
-<hr>
+<input id="search" placeholder="検索">
 
 <div id="spot-list"></div>
 
 </div>
 
-<script>
-const AREAS=["北部","中部","南部"];
-const TYPES=["カフェ","レストラン","パン","ホテル","スーパー","ドラッグストア","コンビニ","土産","個人商店","無人販売","港","空港","レンタカー","レジャー","温泉","神社","工場","家畜","公園","海岸","星空","宇宙","博物館","絶景","猫","知人友人・親戚","その他"];
+<!-- 下タブ -->
+<div class="bottom-bar">
+  <button onclick="toggleFav()">⭐</button>
+  <button onclick="exportData()">📤</button>
+</div>
 
+<script>
 let spots=JSON.parse(localStorage.getItem("spots"))||[];
 let favorites=JSON.parse(localStorage.getItem("fav"))||[];
+let showFav=false;
 
-let selectedArea="", selectedTypes=[];
-let filterArea="", filterTypes=[];
-let showFavOnly=false, isAndMode=true;
-let imageData="";
-
-// DOM
-const formBox=document.getElementById("formBox");
-const areaButtons=document.getElementById("area-buttons");
-const typeButtons=document.getElementById("type-buttons");
-const filterAreaEl=document.getElementById("filter-area");
-const filterTypeEl=document.getElementById("filter-type");
-const spotList=document.getElementById("spot-list");
-
-const nameInput=document.getElementById("name");
-const descInput=document.getElementById("desc");
-const searchInput=document.getElementById("search");
-const imageInput=document.getElementById("image");
-const preview=document.getElementById("preview");
-
-// 折りたたみ
-function toggleForm(){
-  formBox.style.display = formBox.style.display==="none" ? "block" : "none";
-}
-
-// ボタン生成
-function createButtons(target, list, callback){
-  list.forEach(item=>{
-    const btn=document.createElement("span");
-    btn.className="tag-btn";
-    btn.innerText=item;
-    btn.onclick=()=>callback(item);
-    target.appendChild(btn);
-  });
-}
-
-createButtons(areaButtons, AREAS, a=>{
-  selectedArea = selectedArea===a?"":a;
-  renderButtons();
-});
-
-createButtons(typeButtons, TYPES, t=>{
-  selectedTypes.includes(t)
-    ? selectedTypes=selectedTypes.filter(x=>x!==t)
-    : selectedTypes.push(t);
-  renderButtons();
-});
-
-createButtons(filterAreaEl, AREAS, a=>{
-  filterArea = filterArea===a?"":a;
-  renderButtons(); render();
-});
-
-createButtons(filterTypeEl, TYPES, t=>{
-  filterTypes.includes(t)
-    ? filterTypes=filterTypes.filter(x=>x!==t)
-    : filterTypes.push(t);
-  renderButtons(); render();
-});
-
-// ボタン状態
-function renderButtons(){
-  document.querySelectorAll(".tag-btn").forEach(btn=>{
-    const t=btn.innerText;
-    btn.classList.toggle("active",
-      t===selectedArea ||
-      selectedTypes.includes(t) ||
-      t===filterArea ||
-      filterTypes.includes(t)
-    );
-  });
-}
-
-// 画像
-imageInput.addEventListener("change", e=>{
-  const file=e.target.files[0];
-  if(!file) return;
-
-  const reader=new FileReader();
-  reader.onload=()=>{
-    imageData=reader.result;
-    preview.src=imageData;
-    preview.style.display="block";
-  };
-  reader.readAsDataURL(file);
-});
-
-// 保存
-function saveSpot(){
-  const name=nameInput.value.trim();
-  if(!name) return alert("名前必須");
-
-  const tags=[selectedArea,...selectedTypes].filter(Boolean);
-
-  spots.push({
-    name,
-    desc:descInput.value,
-    tags,
-    img:imageData
-  });
-
-  localStorage.setItem("spots",JSON.stringify(spots));
-
-  clearForm();
-  render();
-}
-
-// 表示
 function render(){
-  const keyword=searchInput.value.toLowerCase();
-  spotList.innerHTML="";
+  const keyword=search.value.toLowerCase();
+  spot-list.innerHTML="";
 
   spots.filter(s=>{
     if(!s.name.toLowerCase().includes(keyword)) return false;
-    if(filterArea && !s.tags.includes(filterArea)) return false;
-    if(showFavOnly && !favorites.includes(s.name)) return false;
-
-    if(filterTypes.length){
-      if(isAndMode && !filterTypes.every(t=>s.tags.includes(t))) return false;
-      if(!isAndMode && !filterTypes.some(t=>s.tags.includes(t))) return false;
-    }
+    if(showFav && !favorites.includes(s.name)) return false;
     return true;
   }).forEach(s=>{
     const fav=favorites.includes(s.name);
@@ -317,22 +153,20 @@ function render(){
     div.className="card";
 
     div.innerHTML=`
-      ${s.img ? `<img src="${s.img}">` : ""}
+      ${s.img?`<img src="${s.img}">`:""}
       <div class="card-content">
         <h3>${s.name}</h3>
         <div>${s.desc||""}</div>
-        <div style="font-size:12px; color:#777;">${s.tags.join(", ")}</div>
         <button onclick="toggleFavorite('${s.name}')">
           ${fav?"⭐":"☆"}
         </button>
       </div>
     `;
 
-    spotList.appendChild(div);
+    document.getElementById("spot-list").appendChild(div);
   });
 }
 
-// その他
 function toggleFavorite(name){
   favorites.includes(name)
     ? favorites=favorites.filter(f=>f!==name)
@@ -342,14 +176,8 @@ function toggleFavorite(name){
   render();
 }
 
-function toggleFavFilter(){
-  showFavOnly=!showFavOnly;
-  render();
-}
-
-function toggleMode(){
-  isAndMode=!isAndMode;
-  alert(isAndMode?"AND検索":"OR検索");
+function toggleFav(){
+  showFav=!showFav;
   render();
 }
 
@@ -358,20 +186,7 @@ function exportData(){
   alert("コピーしたよ");
 }
 
-function clearForm(){
-  nameInput.value="";
-  descInput.value="";
-  imageInput.value="";
-  preview.style.display="none";
-  selectedArea="";
-  selectedTypes=[];
-  imageData="";
-  renderButtons();
-}
-
-searchInput.addEventListener("input",render);
-
-renderButtons();
+search.addEventListener("input",render);
 render();
 </script>
 
