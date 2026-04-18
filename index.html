@@ -173,7 +173,11 @@ let state = {
   spots: JSON.parse(localStorage.getItem("spots")) || [],
   favorites: JSON.parse(localStorage.getItem("fav")) || [],
 
-  form:{ area:"", types:[], image:"" },
+  form:{
+    area:"",
+    types:[],
+    image:""
+  },
 
   filter:{
     area:"",
@@ -354,7 +358,7 @@ function filterData(){
 }
 
 /* =========================
-   active制御（修正済み）
+   active表示（完全修正版）
 ========================= */
 function updateActiveButtons(){
 
@@ -393,6 +397,7 @@ function render(){
         <h3>${s.name}</h3>
         <div>${s.desc||""}</div>
         <div style="font-size:12px;color:#666;">
+          ${s.tags.area ? `📍${s.tags.area} ` : ""}
           ${(s.tags.types||[]).join(", ")}
         </div>
         <button onclick="toggleFavorite('${s.name}')">
