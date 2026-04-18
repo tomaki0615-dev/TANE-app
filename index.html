@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+
 <title>種子島スポット検索</title>
 
 <style>
@@ -13,7 +14,6 @@ body{
   font-size:17px;
 }
 
-/* ===== ヘッダー ===== */
 header{
   position:fixed;
   top:0;
@@ -27,7 +27,7 @@ header{
   z-index:1000;
 }
 
-/* ===== タブ ===== */
+/* タブ */
 .tabs{
   display:flex;
   position:fixed;
@@ -50,12 +50,12 @@ header{
   color:white;
 }
 
-/* ===== コンテンツずらし（重要修正） ===== */
+/* コンテンツ */
 .container{
   padding:110px 10px 20px;
 }
 
-/* ===== UI ===== */
+/* 入力 */
 input, textarea{
   width:100%;
   padding:14px;
@@ -65,13 +65,16 @@ input, textarea{
   font-size:16px;
 }
 
+/* ボタン */
 button{
   padding:12px;
   border-radius:12px;
   border:none;
   background:#e5e7eb;
+  cursor:pointer;
 }
 
+/* タグ */
 .tag-btn{
   padding:10px 14px;
   margin:4px;
@@ -79,6 +82,7 @@ button{
   background:#eee;
   display:inline-block;
   cursor:pointer;
+  user-select:none;
 }
 
 .tag-btn.active{
@@ -86,7 +90,7 @@ button{
   color:white;
 }
 
-/* ===== カード ===== */
+/* カード */
 .card{
   display:flex;
   gap:10px;
@@ -105,12 +109,10 @@ button{
 }
 
 .card-actions{
-  display:flex;
-  gap:6px;
   margin-top:6px;
 }
 
-/* ===== 表示切替 ===== */
+/* 表示切替 */
 .page{ display:none; }
 .page.active{ display:block; }
 
@@ -152,7 +154,7 @@ button{
 
 </div>
 
-<!-- ================= 追加 / 編集 ================= -->
+<!-- ================= 追加 ================= -->
 <div id="addPage" class="page">
 
   <div>エリア</div>
@@ -204,8 +206,6 @@ const andBtn = el("andBtn");
 /* =========================
    状態
 ========================= */
-let editIndex = null;
-
 let state = {
   page:"search",
 
@@ -329,11 +329,12 @@ function handleTag(mode,item){
 }
 
 /* =========================
-   保存（追加＋編集）
+   保存
 ========================= */
 function saveSpot(){
+  if(!nameEl.value.trim()) return alert("名前必須");
 
-  const data = {
+  state.spots.push({
     name:nameEl.value,
     desc:descEl.value,
     tags:{
@@ -341,14 +342,7 @@ function saveSpot(){
       types:state.form.types
     },
     img:state.form.image
-  };
-
-  if(editIndex !== null){
-    state.spots[editIndex] = data;
-    editIndex = null;
-  }else{
-    state.spots.push(data);
-  }
+  });
 
   localStorage.setItem("spots",JSON.stringify(state.spots));
 
@@ -358,30 +352,7 @@ function saveSpot(){
 }
 
 /* =========================
-   編集
-========================= */
-function editSpot(i){
-  const s = state.spots[i];
-
-  nameEl.value = s.name;
-  descEl.value = s.desc;
-
-  state.form.area = s.tags?.area || "";
-  state.form.types = s.tags?.types || [];
-  state.form.image = s.img || "";
-
-  if(s.img){
-    previewEl.src = s.img;
-    previewEl.style.display="block";
-  }
-
-  editIndex = i;
-
-  switchTab("add");
-}
-
-/* =========================
-   フォームリセット
+   リセット
 ========================= */
 function resetForm(){
   nameEl.value="";
@@ -393,7 +364,7 @@ function resetForm(){
 }
 
 /* =========================
-   AND/OR
+   AND
 ========================= */
 function toggleAndMode(){
   state.filter.andMode = !state.filter.andMode;
@@ -445,7 +416,7 @@ function filterData(){
 }
 
 /* =========================
-   描画
+   描画（ここが安定核）
 ========================= */
 function render(){
 
@@ -464,15 +435,30 @@ function render(){
         <div style="font-size:12px;color:#666;">
           ${getArea(s)} ${(getTypes(s)).join(", ")}
         </div>
-
-        <div class="card-actions">
-          <button onclick="editSpot(${i})">編集</button>
-        </div>
-
       </div>
     `;
 
     spotList.appendChild(d);
+  });
+
+  updateActive();
+}
+
+/* =========================
+   active同期（バグ潰し核心）
+========================= */
+function updateActive(){
+
+  document.querySelectorAll(".tag-btn").forEach(btn=>{
+    const t=btn.innerText;
+
+    const active =
+      t===state.form.area ||
+      t===state.filter.area ||
+      state.form.types.includes(t) ||
+      state.filter.types.includes(t);
+
+    btn.classList.toggle("active",active);
   });
 }
 
