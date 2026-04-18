@@ -1,134 +1,262 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-  <meta charset="UTF-8">
-  <title>種子島ガイド</title>
-  <style>
-    body {
-      font-family: sans-serif;
-      padding: 20px;
-      background: #f5f5f5;
-    }
+<meta charset="UTF-8">
+<title>種子島ガイド</title>
 
-    h1 {
-      text-align: center;
-    }
+<style>
+body {
+  font-family: sans-serif;
+  padding: 20px;
+  background: #f5f5f5;
+}
 
-    #search {
-      width: 100%;
-      padding: 10px;
-      margin-bottom: 20px;
-    }
+h1 { text-align: center; }
 
-    .card {
-      background: white;
-      padding: 15px;
-      margin-bottom: 10px;
-      border-radius: 10px;
-    }
+#search {
+  width: 100%;
+  padding: 10px;
+  margin-bottom: 10px;
+}
 
-    .tags {
-      margin-top: 10px;
-    }
+.tag-btn, .mode-btn {
+  display: inline-block;
+  padding: 6px 10px;
+  margin: 3px;
+  border-radius: 10px;
+  cursor: pointer;
+  background: #ddd;
+}
 
-    .tag {
-      display: inline-block;
-      background: #eee;
-      padding: 5px 10px;
-      margin-right: 5px;
-      border-radius: 5px;
-      font-size: 12px;
-      cursor: pointer;
-    }
+.active {
+  background: #333;
+  color: white;
+}
 
-    .tag:hover {
-      background: #ddd;
-    }
-  </style>
+.card {
+  background: white;
+  padding: 15px;
+  margin-bottom: 10px;
+  border-radius: 10px;
+}
+
+#map {
+  height: 300px;
+  margin-bottom: 20px;
+  border-radius: 10px;
+}
+
+/* エリア色 */
+.area-北部 { background: #4da6ff !important; color: white; }
+.area-中部 { background: #ff9933 !important; color: white; }
+.area-南部 { background: #ff4d4d !important; color: white; }
+
+button { margin: 5px 5px 5px 0; }
+textarea { width: 100%; margin-top: 5px; }
+</style>
 </head>
+
 <body>
 
-  <h1>🌴 種子島スポット</h1>
+<h1>🌴 種子島ガイド</h1>
 
-  <input type="text" id="search" placeholder="検索...">
+<input type="text" id="search" placeholder="検索...">
 
-  <div id="spot-list"></div>
+<div>
+  <span class="mode-btn active" onclick="setMode('OR')">OR</span>
+  <span class="mode-btn" onclick="setMode('AND')">AND</span>
+</div>
 
-  <script>
-    const spots = [
-      {
-        name: "種子島宇宙センター",
-        description: "ロケット打ち上げで有名",
-        tags: ["観光", "宇宙"]
-      },
-      {
-        name: "千座の岩屋",
-        description: "干潮時だけ入れる洞窟",
-        tags: ["絶景", "海"]
-      },
-      {
-        name: "門倉岬",
-        description: "鉄砲伝来の地",
-        tags: ["歴史", "絶景"]
+<div id="tag-buttons"></div>
+
+<div id="map"></div>
+
+<div id="spot-list"></div>
+
+<script>
+const spots = [
+  { name: "種子島宇宙センター", lat:30.4, lng:130.9, tags:["観光","宇宙","南部"] },
+  { name: "千座の岩屋", lat:30.5, lng:130.9, tags:["絶景","海","中部"] },
+  { name: "門倉岬", lat:30.3, lng:130.9, tags:["歴史","絶景","南部"] }
+];
+
+// ===== 状態 =====
+let selectedTags = [];
+let mode = "OR";
+let markers = [];
+
+// ===== 保存 =====
+let favorites = JSON.parse(localStorage.getItem("fav")) || [];
+let visits = JSON.parse(localStorage.getItem("visit")) || {};
+let comments = JSON.parse(localStorage.getItem("comment")) || {};
+
+const list = document.getElementById("spot-list");
+const search = document.getElementById("search");
+const tagButtons = document.getElementById("tag-buttons");
+
+const allTags = [...new Set(spots.flatMap(s => s.tags))];
+
+// ===== 地図 =====
+let map;
+
+function initMap() {
+  map = new google.maps.Map(document.getElementById("map"), {
+    center: { lat: 30.4, lng: 130.9 },
+    zoom: 10
+  });
+  applyFilter();
+}
+
+function getColor(tags) {
+  if (tags.includes("北部")) return "blue";
+  if (tags.includes("中部")) return "orange";
+  if (tags.includes("南部")) return "red";
+  return "gray";
+}
+
+function renderMap(data) {
+  markers.forEach(m => m.setMap(null));
+  markers = [];
+
+  data.forEach(spot => {
+    const marker = new google.maps.Marker({
+      position: { lat: spot.lat, lng: spot.lng },
+      map: map,
+      title: spot.name,
+      icon: {
+        url: `http://maps.google.com/mapfiles/ms/icons/${getColor(spot.tags)}-dot.png`
       }
-    ];
-
-    const list = document.getElementById("spot-list");
-    const search = document.getElementById("search");
-
-    let currentTag = null;
-
-    function render(data) {
-      list.innerHTML = "";
-
-      data.forEach(spot => {
-        const div = document.createElement("div");
-        div.className = "card";
-
-        div.innerHTML = `
-          <h2>${spot.name}</h2>
-          <p>${spot.description}</p>
-          <div class="tags">
-            ${spot.tags.map(tag => 
-              `<span class="tag" onclick="filterByTag('${tag}')">${tag}</span>`
-            ).join("")}
-          </div>
-        `;
-
-        list.appendChild(div);
-      });
-    }
-
-    function filterByTag(tag) {
-      currentTag = tag;
-
-      const filtered = spots.filter(spot =>
-        spot.tags.includes(tag)
-      );
-
-      render(filtered);
-    }
-
-    search.addEventListener("input", () => {
-      const keyword = search.value.toLowerCase();
-
-      let filtered = spots.filter(spot =>
-        spot.name.toLowerCase().includes(keyword) ||
-        spot.tags.some(tag => tag.includes(keyword))
-      );
-
-      if (currentTag) {
-        filtered = filtered.filter(spot =>
-          spot.tags.includes(currentTag)
-        );
-      }
-
-      render(filtered);
     });
 
-    // 初期表示
-    render(spots);
-  </script>
+    markers.push(marker);
+  });
+}
+
+// ===== タグ =====
+function renderTags() {
+  tagButtons.innerHTML = "";
+  allTags.forEach(tag => {
+    const btn = document.createElement("span");
+    btn.className = "tag-btn " + (["北部","中部","南部"].includes(tag) ? "area-"+tag : "");
+    btn.innerText = tag;
+
+    btn.onclick = () => {
+      selectedTags.includes(tag)
+        ? selectedTags = selectedTags.filter(t => t !== tag)
+        : selectedTags.push(tag);
+      applyFilter();
+      updateUI();
+    };
+
+    tagButtons.appendChild(btn);
+  });
+}
+
+// ===== UI =====
+function setMode(m) {
+  mode = m;
+  applyFilter();
+  updateUI();
+}
+
+function updateUI() {
+  document.querySelectorAll(".tag-btn").forEach(btn => {
+    btn.classList.toggle("active", selectedTags.includes(btn.innerText));
+  });
+
+  document.querySelectorAll(".mode-btn").forEach(btn => {
+    btn.classList.toggle("active", btn.innerText === mode);
+  });
+}
+
+// ===== 機能 =====
+function toggleFavorite(name) {
+  favorites.includes(name)
+    ? favorites = favorites.filter(f => f !== name)
+    : favorites.push(name);
+
+  localStorage.setItem("fav", JSON.stringify(favorites));
+  applyFilter();
+}
+
+function toggleVisit(name) {
+  visits[name] = new Date().toLocaleDateString();
+  localStorage.setItem("visit", JSON.stringify(visits));
+  applyFilter();
+}
+
+function saveComment(name, text) {
+  comments[name] = text;
+  localStorage.setItem("comment", JSON.stringify(comments));
+}
+
+// ===== 表示 =====
+function render(data) {
+  list.innerHTML = "";
+
+  data.forEach(spot => {
+    const fav = favorites.includes(spot.name);
+    const visitDate = visits[spot.name] || "";
+    const comment = comments[spot.name] || "";
+
+    const div = document.createElement("div");
+    div.className = "card";
+
+    div.innerHTML = `
+      <h2>${spot.name}</h2>
+
+      <button onclick="toggleFavorite('${spot.name}')">
+        ${fav ? "⭐ お気に入り済み" : "☆ お気に入り"}
+      </button>
+
+      <button onclick="toggleVisit('${spot.name}')">
+        ✅ 訪問 ${visitDate ? "(" + visitDate + ")" : ""}
+      </button>
+
+      <div>
+        ${spot.tags.map(t => {
+          const cls = ["北部","中部","南部"].includes(t) ? "area-"+t : "";
+          return `<span class="tag-btn ${cls}">${t}</span>`;
+        }).join("")}
+      </div>
+
+      <textarea onchange="saveComment('${spot.name}', this.value)">${comment}</textarea>
+    `;
+
+    list.appendChild(div);
+  });
+
+  renderMap(data);
+}
+
+// ===== フィルター =====
+function applyFilter() {
+  const keyword = search.value.toLowerCase();
+
+  let filtered = spots.filter(s =>
+    s.name.toLowerCase().includes(keyword)
+  );
+
+  if (selectedTags.length) {
+    filtered = filtered.filter(s =>
+      mode === "OR"
+        ? selectedTags.some(t => s.tags.includes(t))
+        : selectedTags.every(t => s.tags.includes(t))
+    );
+  }
+
+  render(filtered);
+}
+
+search.addEventListener("input", applyFilter);
+
+// 初期化
+renderTags();
+updateUI();
+</script>
+
+<!-- ★ここにAPIキー入れる -->
+<script src="https://maps.googleapis.com/maps/api/js?key=YOUR_API_KEY&callback=initMap" async defer></script>
 
 </body>
 </html>
