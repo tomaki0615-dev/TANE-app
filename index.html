@@ -17,19 +17,44 @@ header{
   position:fixed;
   top:0;
   width:100%;
-  background:rgba(255,255,255,0.92);
+  background:rgba(255,255,255,0.95);
   backdrop-filter:blur(10px);
   border-bottom:1px solid #ddd;
-  padding:14px;
+  padding:12px;
   text-align:center;
   font-weight:bold;
   z-index:1000;
 }
 
 .container{
-  padding:80px 10px 20px;
+  padding:70px 10px 20px;
 }
 
+/* タブ */
+.tabs{
+  display:flex;
+  position:fixed;
+  top:48px;
+  width:100%;
+  background:white;
+  border-bottom:1px solid #ddd;
+  z-index:999;
+}
+
+.tab{
+  flex:1;
+  padding:12px;
+  text-align:center;
+  cursor:pointer;
+  user-select:none;
+}
+
+.tab.active{
+  background:#3b82f6;
+  color:white;
+}
+
+/* 共通 */
 input, textarea{
   width:100%;
   padding:14px;
@@ -40,20 +65,13 @@ input, textarea{
 }
 
 button{
-  padding:14px;
+  padding:12px;
   border-radius:12px;
   border:none;
   background:#e5e7eb;
-  font-size:16px;
 }
 
-.row-btn{
-  display:flex;
-  gap:8px;
-}
-
-.row-btn button{ flex:1; }
-
+/* タグ */
 .tag-btn{
   padding:10px 14px;
   margin:4px;
@@ -61,7 +79,6 @@ button{
   background:#eee;
   display:inline-block;
   cursor:pointer;
-  user-select:none;
 }
 
 .tag-btn.active{
@@ -69,6 +86,7 @@ button{
   color:white;
 }
 
+/* カード */
 .card{
   display:flex;
   gap:10px;
@@ -86,25 +104,11 @@ button{
   border-radius:10px;
 }
 
-.card-content{ flex:1; }
+/* セクション */
+.page{ display:none; }
+.page.active{ display:block; }
 
-.card h3{ margin:0; font-size:18px; }
-
-.toggle-btn{
-  width:100%;
-  background:#3b82f6;
-  color:white;
-}
-
-.form-box{
-  display:none;
-  background:white;
-  padding:12px;
-  border-radius:12px;
-  margin-bottom:15px;
-}
-
-/* ANDトグル */
+/* ANDボタン */
 #andBtn.on{
   background:#3b82f6;
   color:white;
@@ -116,11 +120,40 @@ button{
 
 <header>🌴 種子島スポット検索</header>
 
+<!-- タブ -->
+<div class="tabs">
+  <div class="tab active" onclick="switchTab('search')">検索</div>
+  <div class="tab" onclick="switchTab('add')">追加</div>
+</div>
+
 <div class="container">
 
-<button class="toggle-btn" onclick="toggleForm()">➕ スポット追加</button>
+<!-- =========================
+     検索ページ
+========================= -->
+<div id="searchPage" class="page active">
 
-<div id="formBox" class="form-box">
+  <input id="search" placeholder="検索">
+
+  <button onclick="toggleFavFilter()">⭐ お気に入り</button>
+  <button id="andBtn" onclick="toggleAndMode()">☑ AND検索</button>
+
+  <div>
+    <div>エリア</div>
+    <div id="filter-area"></div>
+
+    <div>種類タグ</div>
+    <div id="filter-type"></div>
+  </div>
+
+  <div id="spot-list"></div>
+
+</div>
+
+<!-- =========================
+     追加ページ
+========================= -->
+<div id="addPage" class="page">
 
   <div>エリア</div>
   <div id="area-buttons"></div>
@@ -135,26 +168,8 @@ button{
   <img id="preview" style="display:none;width:100%;border-radius:10px;">
 
   <button onclick="saveSpot()">保存</button>
+
 </div>
-
-<input id="search" placeholder="検索">
-
-<div class="row-btn">
-  <button onclick="toggleFavFilter()">⭐</button>
-  <button onclick="exportData()">📤</button>
-</div>
-
-<button id="andBtn" onclick="toggleAndMode()">AND検索</button>
-
-<div>
-  <div>エリア</div>
-  <div id="filter-area"></div>
-
-  <div>種類タグ</div>
-  <div id="filter-type"></div>
-</div>
-
-<div id="spot-list"></div>
 
 </div>
 
@@ -173,28 +188,26 @@ const TYPES=[
 ];
 
 /* =========================
-   DOM（安全取得）
+   DOM
 ========================= */
-const el = (id)=>document.getElementById(id);
+const el = id => document.getElementById(id);
 
+const searchEl = el("search");
 const nameEl = el("name");
 const descEl = el("desc");
-const searchEl = el("search");
 const imageEl = el("image");
 const previewEl = el("preview");
 
-const areaButtons = el("area-buttons");
-const typeButtons = el("type-buttons");
-const filterAreaEl = el("filter-area");
-const filterTypeEl = el("filter-type");
 const spotList = el("spot-list");
-const formBox = el("formBox");
+
 const andBtn = el("andBtn");
 
 /* =========================
    状態
 ========================= */
 let state = {
+  page:"search",
+
   spots: JSON.parse(localStorage.getItem("spots")) || [],
   favorites: JSON.parse(localStorage.getItem("fav")) || [],
 
@@ -226,6 +239,24 @@ function init(){
 }
 
 /* =========================
+   タブ切替
+========================= */
+function switchTab(tab){
+  state.page = tab;
+
+  document.querySelectorAll(".page").forEach(p=>p.classList.remove("active"));
+  document.querySelectorAll(".tab").forEach(t=>t.classList.remove("active"));
+
+  if(tab==="search"){
+    el("searchPage").classList.add("active");
+    document.querySelectorAll(".tab")[0].classList.add("active");
+  }else{
+    el("addPage").classList.add("active");
+    document.querySelectorAll(".tab")[1].classList.add("active");
+  }
+}
+
+/* =========================
    イベント
 ========================= */
 function bind(){
@@ -234,39 +265,44 @@ function bind(){
     render();
   };
 
-  imageEl.onchange=handleImage;
+  imageEl.onchange=e=>{
+    const f=e.target.files[0];
+    if(!f) return;
+
+    const r=new FileReader();
+    r.onload=()=>{
+      state.form.image=r.result;
+      previewEl.src=r.result;
+      previewEl.style.display="block";
+    };
+    r.readAsDataURL(f);
+  };
 }
 
 /* =========================
-   フォーム
-========================= */
-function toggleForm(){
-  formBox.style.display =
-    formBox.style.display==="block"?"none":"block";
-}
-
-/* =========================
-   ボタン生成（ここが重要）
+   ボタン生成（分離で安定化）
 ========================= */
 function createButtons(){
-  make(areaButtons,AREAS,"area");
-  make(typeButtons,TYPES,"type");
-  make(filterAreaEl,AREAS,"filterArea");
-  make(filterTypeEl,TYPES,"filterType");
+  make("area-buttons",AREAS,"area");
+  make("type-buttons",TYPES,"type");
+  make("filter-area",AREAS,"filterArea");
+  make("filter-type",TYPES,"filterType");
 }
 
-function make(target,list,mode){
+function make(id,list,mode){
+  const target=el(id);
+
   list.forEach(item=>{
-    const el=document.createElement("span");
-    el.className="tag-btn";
-    el.innerText=item;
-    el.onclick=()=>handleTag(mode,item);
-    target.appendChild(el);
+    const b=document.createElement("span");
+    b.className="tag-btn";
+    b.innerText=item;
+    b.onclick=()=>handleTag(mode,item);
+    target.appendChild(b);
   });
 }
 
 /* =========================
-   タグ処理
+   タグ
 ========================= */
 function handleTag(mode,item){
 
@@ -294,7 +330,7 @@ function handleTag(mode,item){
 }
 
 /* =========================
-   ANDトグル（チェック式）
+   AND/OR
 ========================= */
 function toggleAndMode(){
   state.filter.andMode = !state.filter.andMode;
@@ -303,29 +339,11 @@ function toggleAndMode(){
 }
 
 function updateAndUI(){
-  if(state.filter.andMode){
-    andBtn.innerText="☑ AND検索";
-    andBtn.classList.add("on");
-  }else{
-    andBtn.innerText="☐ AND検索";
-    andBtn.classList.remove("on");
-  }
-}
+  andBtn.innerText = state.filter.andMode
+    ? "☑ AND検索"
+    : "☐ AND検索";
 
-/* =========================
-   画像
-========================= */
-function handleImage(e){
-  const f=e.target.files[0];
-  if(!f) return;
-
-  const r=new FileReader();
-  r.onload=()=>{
-    state.form.image=r.result;
-    previewEl.src=r.result;
-    previewEl.style.display="block";
-  };
-  r.readAsDataURL(f);
+  andBtn.classList.toggle("on",state.filter.andMode);
 }
 
 /* =========================
@@ -345,23 +363,23 @@ function saveSpot(){
   });
 
   localStorage.setItem("spots",JSON.stringify(state.spots));
+
+  // 追加後は検索へ戻す
+  switchTab("search");
   render();
 }
 
 /* =========================
-   安全取得
+   フィルター
 ========================= */
 function getTypes(s){
-  return Array.isArray(s.tags?.types) ? s.tags.types : [];
+  return s.tags?.types || [];
 }
 
 function getArea(s){
   return s.tags?.area || "";
 }
 
-/* =========================
-   フィルター
-========================= */
 function filterData(){
   const k=state.filter.keyword.toLowerCase();
 
@@ -382,9 +400,6 @@ function filterData(){
       }
     }
 
-    if(state.filter.favOnly &&
-      !state.favorites.includes(s.name)) return false;
-
     return true;
   });
 }
@@ -394,41 +409,36 @@ function filterData(){
 ========================= */
 function render(){
 
-  updateActiveButtons();
-
-  const list=filterData();
   spotList.innerHTML="";
 
-  list.forEach(s=>{
-    const fav=state.favorites.includes(s.name);
-
+  filterData().forEach(s=>{
     const d=document.createElement("div");
     d.className="card";
 
     d.innerHTML=`
       ${s.img?`<img src="${s.img}">`:""}
-      <div class="card-content">
+      <div>
         <h3>${s.name}</h3>
         <div>${s.desc||""}</div>
         <div style="font-size:12px;color:#666;">
           ${getArea(s)} ${(getTypes(s)).join(", ")}
         </div>
-        <button onclick="toggleFavorite('${s.name}')">
-          ${fav?"⭐":"☆"}
-        </button>
       </div>
     `;
 
     spotList.appendChild(d);
   });
+
+  updateActive();
 }
 
 /* =========================
-   active表示
+   active管理（完全分離）
 ========================= */
-function updateActiveButtons(){
-  document.querySelectorAll(".tag-btn").forEach(btn=>{
-    const t=btn.innerText;
+function updateActive(){
+
+  document.querySelectorAll(".tag-btn").forEach(b=>{
+    const t=b.innerText;
 
     const active =
       t===state.form.area ||
@@ -436,20 +446,8 @@ function updateActiveButtons(){
       state.form.types.includes(t) ||
       state.filter.types.includes(t);
 
-    btn.classList.toggle("active",active);
+    b.classList.toggle("active",active);
   });
-}
-
-/* =========================
-   お気に入り
-========================= */
-function toggleFavorite(name){
-  state.favorites.includes(name)
-    ? state.favorites=state.favorites.filter(f=>f!==name)
-    : state.favorites.push(name);
-
-  localStorage.setItem("fav",JSON.stringify(state.favorites));
-  render();
 }
 
 /* =========================
