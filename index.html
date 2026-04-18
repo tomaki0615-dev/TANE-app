@@ -6,7 +6,6 @@
 
 <title>種子島の見どころ</title>
 
-<!-- ✅ アイコン修正版（ここ重要） -->
 <link rel="icon" type="image/png" href="icon.png">
 <link rel="apple-touch-icon" sizes="180x180" href="icon.png">
 
@@ -31,7 +30,6 @@ header{
   z-index:1000;
 }
 
-/* タブ */
 .tabs{
   display:flex;
   position:fixed;
@@ -54,12 +52,10 @@ header{
   color:white;
 }
 
-/* コンテンツ */
 .container{
   padding:110px 10px 20px;
 }
 
-/* 入力 */
 input, textarea{
   width:100%;
   padding:14px;
@@ -69,7 +65,6 @@ input, textarea{
   font-size:16px;
 }
 
-/* ボタン */
 button{
   padding:12px;
   border-radius:12px;
@@ -78,7 +73,6 @@ button{
   cursor:pointer;
 }
 
-/* タグ */
 .tag-btn{
   padding:10px 14px;
   margin:4px;
@@ -93,7 +87,6 @@ button{
   color:white;
 }
 
-/* カード */
 .card{
   display:flex;
   gap:10px;
@@ -111,7 +104,6 @@ button{
   border-radius:10px;
 }
 
-/* 表示 */
 .page{ display:none; }
 .page.active{ display:block; }
 
@@ -133,7 +125,7 @@ button{
 
 <div class="container">
 
-<!-- ================= 検索 ================= -->
+<!-- 検索 -->
 <div id="searchPage" class="page active">
 
   <input id="search" placeholder="検索">
@@ -152,7 +144,7 @@ button{
 
 </div>
 
-<!-- ================= 追加 ================= -->
+<!-- 追加 -->
 <div id="addPage" class="page">
 
   <input id="name" placeholder="名前">
@@ -209,6 +201,7 @@ function init(){
   render();
 }
 
+/* タブ */
 function switchTab(tab){
   document.querySelectorAll(".page").forEach(p=>p.classList.remove("active"));
   document.querySelectorAll(".tab").forEach(t=>t.classList.remove("active"));
@@ -222,6 +215,7 @@ function switchTab(tab){
   }
 }
 
+/* イベント */
 function bind(){
   searchEl.oninput=e=>{
     state.filter.keyword=e.target.value;
@@ -242,6 +236,7 @@ function bind(){
   };
 }
 
+/* タグ生成 */
 function createButtons(){
   make("area-buttons",AREAS,"area");
   make("type-buttons",TYPES,"type");
@@ -261,6 +256,7 @@ function make(id,list,mode){
   });
 }
 
+/* タグ操作 */
 function handleTag(mode,item){
 
   if(mode==="area"){
@@ -286,6 +282,7 @@ function handleTag(mode,item){
   render();
 }
 
+/* 保存 */
 function saveSpot(){
   state.spots.push({
     name:nameEl.value,
@@ -307,6 +304,7 @@ function saveSpot(){
   render();
 }
 
+/* フィルター */
 function getTypes(s){ return s.tags?.types || []; }
 function getArea(s){ return s.tags?.area || ""; }
 
@@ -331,6 +329,7 @@ function filterData(){
   });
 }
 
+/* 描画 */
 function render(){
   spotList.innerHTML="";
 
@@ -351,8 +350,27 @@ function render(){
 
     spotList.appendChild(d);
   });
+
+  /* ⭐これが今回の修正ポイント */
+  updateActive();
 }
 
+/* active同期 */
+function updateActive(){
+  document.querySelectorAll(".tag-btn").forEach(btn=>{
+    const t=btn.innerText;
+
+    const active =
+      t===state.form.area ||
+      t===state.filter.area ||
+      state.form.types.includes(t) ||
+      state.filter.types.includes(t);
+
+    btn.classList.toggle("active",active);
+  });
+}
+
+/* AND */
 function toggleAndMode(){
   state.filter.andMode=!state.filter.andMode;
   updateAndUI();
