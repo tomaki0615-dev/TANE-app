@@ -53,9 +53,7 @@ button{
   gap:8px;
 }
 
-.row-btn button{
-  flex:1;
-}
+.row-btn button{ flex:1; }
 
 .tag-btn{
   padding:10px 14px;
@@ -89,14 +87,9 @@ button{
   border-radius:10px;
 }
 
-.card-content{
-  flex:1;
-}
+.card-content{ flex:1; }
 
-.card h3{
-  margin:0;
-  font-size:18px;
-}
+.card h3{ margin:0; font-size:18px; }
 
 .toggle-btn{
   width:100%;
@@ -123,6 +116,7 @@ button{
 <button class="toggle-btn" onclick="toggleForm()">➕ スポット追加</button>
 
 <div id="formBox" class="form-box">
+
   <div>エリア</div>
   <div id="area-buttons"></div>
 
@@ -179,11 +173,7 @@ let state = {
   spots: JSON.parse(localStorage.getItem("spots")) || [],
   favorites: JSON.parse(localStorage.getItem("fav")) || [],
 
-  form:{
-    area:"",
-    types:[],
-    image:""
-  },
+  form:{ area:"", types:[], image:"" },
 
   filter:{
     area:"",
@@ -193,6 +183,22 @@ let state = {
     keyword:""
   }
 };
+
+/* =========================
+   旧データ自動修復
+========================= */
+state.spots = state.spots.map(s=>{
+  if(Array.isArray(s.tags)){
+    return {
+      ...s,
+      tags:{
+        area:s.tags[0] || "",
+        types:s.tags.slice(1)
+      }
+    };
+  }
+  return s;
+});
 
 /* =========================
    DOM
@@ -250,20 +256,18 @@ function make(target,list,mode){
     const el=document.createElement("span");
     el.className="tag-btn";
     el.innerText=item;
-
     el.onclick=()=>handleTag(mode,item);
-
     target.appendChild(el);
   });
 }
 
 /* =========================
-   タグ制御（重要）
+   タグ操作
 ========================= */
 function handleTag(mode,item){
 
   if(mode==="area"){
-    state.form.area = state.form.area===item ? "" : item;
+    state.form.area = state.form.area===item?"":item;
   }
 
   if(mode==="type"){
@@ -273,7 +277,7 @@ function handleTag(mode,item){
   }
 
   if(mode==="filterArea"){
-    state.filter.area = state.filter.area===item ? "" : item;
+    state.filter.area = state.filter.area===item?"":item;
   }
 
   if(mode==="filterType"){
@@ -322,7 +326,7 @@ function saveSpot(){
 }
 
 /* =========================
-   フィルター（安定化）
+   フィルター
 ========================= */
 function filterData(){
   const k=state.filter.keyword.toLowerCase();
@@ -350,7 +354,7 @@ function filterData(){
 }
 
 /* =========================
-   ★ ここが修正ポイント（重要）
+   active制御（修正済み）
 ========================= */
 function updateActiveButtons(){
 
@@ -358,10 +362,10 @@ function updateActiveButtons(){
     const t=btn.innerText;
 
     const active =
-      t===state.filter.area ||
-      state.filter.types.includes(t) ||
       t===state.form.area ||
-      state.form.types.includes(t);
+      t===state.filter.area ||
+      state.form.types.includes(t) ||
+      state.filter.types.includes(t);
 
     btn.classList.toggle("active",active);
   });
