@@ -6,9 +6,6 @@
 
 <title>種子島の見どころ</title>
 
-<link rel="icon" type="image/png" href="icon.png">
-<link rel="apple-touch-icon" sizes="180x180" href="icon.png">
-
 <style>
 body{
   font-family:-apple-system, BlinkMacSystemFont;
@@ -73,6 +70,16 @@ button{
   cursor:pointer;
 }
 
+.row{
+  display:flex;
+  gap:8px;
+  margin-bottom:10px;
+}
+
+.row button{
+  flex:1;
+}
+
 .tag-btn{
   padding:10px 14px;
   margin:4px;
@@ -107,7 +114,8 @@ button{
 .page{ display:none; }
 .page.active{ display:block; }
 
-#andBtn.on{
+#andBtn.on,
+#favBtn.on{
   background:#3b82f6;
   color:white;
 }
@@ -125,12 +133,15 @@ button{
 
 <div class="container">
 
-<!-- 検索 -->
+<!-- ================= 検索 ================= -->
 <div id="searchPage" class="page active">
 
   <input id="search" placeholder="検索">
 
-  <button id="andBtn" onclick="toggleAndMode()">☑ AND検索</button>
+  <div class="row">
+    <button id="andBtn" onclick="toggleAndMode()">☑ AND検索</button>
+    <button id="favBtn" onclick="toggleFavFilter()">☆ お気に入り</button>
+  </div>
 
   <div>
     <div>エリア</div>
@@ -144,7 +155,7 @@ button{
 
 </div>
 
-<!-- 追加 -->
+<!-- ================= 追加 ================= -->
 <div id="addPage" class="page">
 
   <input id="name" placeholder="名前">
@@ -185,11 +196,20 @@ const previewEl = el("preview");
 
 const spotList = el("spot-list");
 const andBtn = el("andBtn");
+const favBtn = el("favBtn");
 
 let state = {
   spots: JSON.parse(localStorage.getItem("spots")) || [],
+  favorites: JSON.parse(localStorage.getItem("fav")) || [],
+
   form:{ area:"", types:[], image:"" },
-  filter:{ area:"", types:[], keyword:"", andMode:true }
+  filter:{
+    area:"",
+    types:[],
+    keyword:"",
+    andMode:true,
+    favOnly:false
+  }
 };
 
 init();
@@ -197,7 +217,7 @@ init();
 function init(){
   bind();
   createButtons();
-  updateAndUI();
+  updateUI();
   render();
 }
 
@@ -236,7 +256,7 @@ function bind(){
   };
 }
 
-/* タグ生成 */
+/* ボタン生成 */
 function createButtons(){
   make("area-buttons",AREAS,"area");
   make("type-buttons",TYPES,"type");
@@ -256,7 +276,7 @@ function make(id,list,mode){
   });
 }
 
-/* タグ操作 */
+/* タグ */
 function handleTag(mode,item){
 
   if(mode==="area"){
@@ -279,6 +299,27 @@ function handleTag(mode,item){
       : state.filter.types.push(item);
   }
 
+  render();
+}
+
+/* ⭐お気に入り */
+function toggleFav(name){
+  state.favorites.includes(name)
+    ? state.favorites = state.favorites.filter(f=>f!==name)
+    : state.favorites.push(name);
+
+  localStorage.setItem("fav",JSON.stringify(state.favorites));
+  render();
+}
+
+function isFav(name){
+  return state.favorites.includes(name);
+}
+
+/* ⭐フィルターON/OFF */
+function toggleFavFilter(){
+  state.filter.favOnly = !state.filter.favOnly;
+  updateUI();
   render();
 }
 
@@ -312,6 +353,9 @@ function filterData(){
   const k = state.filter.keyword.toLowerCase();
 
   return state.spots.filter(s=>{
+
+    if(state.filter.favOnly && !isFav(s.name)) return false;
+
     if(!s.name.toLowerCase().includes(k)) return false;
     if(state.filter.area && getArea(s)!==state.filter.area) return false;
 
@@ -340,8 +384,15 @@ function render(){
     d.innerHTML=`
       ${s.img?`<img src="${s.img}">`:""}
       <div>
-        <h3>${s.name}</h3>
+        <h3>
+          ${s.name}
+          <button onclick="toggleFav('${s.name}')">
+            ${isFav(s.name) ? "⭐" : "☆"}
+          </button>
+        </h3>
+
         <div>${s.desc||""}</div>
+
         <div style="font-size:12px;color:#666;">
           ${getArea(s)} ${(getTypes(s)).join(", ")}
         </div>
@@ -351,11 +402,10 @@ function render(){
     spotList.appendChild(d);
   });
 
-  /* ⭐これが今回の修正ポイント */
   updateActive();
 }
 
-/* active同期 */
+/* active */
 function updateActive(){
   document.querySelectorAll(".tag-btn").forEach(btn=>{
     const t=btn.innerText;
@@ -370,19 +420,27 @@ function updateActive(){
   });
 }
 
-/* AND */
-function toggleAndMode(){
-  state.filter.andMode=!state.filter.andMode;
-  updateAndUI();
-  render();
-}
+/* UI更新 */
+function updateUI(){
 
-function updateAndUI(){
   andBtn.innerText = state.filter.andMode
     ? "☑ AND検索"
     : "☐ AND検索";
 
   andBtn.classList.toggle("on",state.filter.andMode);
+
+  favBtn.innerText = state.filter.favOnly
+    ? "⭐ お気に入りON"
+    : "☆ お気に入り";
+  
+  favBtn.classList.toggle("on",state.filter.favOnly);
+}
+
+/* AND */
+function toggleAndMode(){
+  state.filter.andMode=!state.filter.andMode;
+  updateUI();
+  render();
 }
 
 </script>
