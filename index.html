@@ -3,7 +3,6 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-
 <title>種子島スポット検索</title>
 
 <style>
@@ -136,7 +135,7 @@ button{
 
 <div class="row-btn">
   <button onclick="toggleFavFilter()">⭐</button>
-  <button onclick="toggleMode()">AND/OR</button>
+  <button onclick="toggleMode()" id="modeBtn">AND検索</button>
   <button onclick="exportData()">📤</button>
 </div>
 
@@ -167,7 +166,7 @@ const TYPES=[
 ];
 
 /* =========================
-   DOM（ここ重要：タグ消失原因対策済み）
+   DOM
 ========================= */
 const nameEl=document.getElementById("name");
 const descEl=document.getElementById("desc");
@@ -181,6 +180,7 @@ const filterAreaEl=document.getElementById("filter-area");
 const filterTypeEl=document.getElementById("filter-type");
 const spotList=document.getElementById("spot-list");
 const formBox=document.getElementById("formBox");
+const modeBtn=document.getElementById("modeBtn");
 
 /* =========================
    状態
@@ -205,22 +205,6 @@ let state={
 };
 
 /* =========================
-   旧データ互換
-========================= */
-state.spots = state.spots.map(s=>{
-  if(Array.isArray(s.tags)){
-    return {
-      ...s,
-      tags:{
-        area:s.tags[0]||"",
-        types:s.tags.slice(1)
-      }
-    };
-  }
-  return s;
-});
-
-/* =========================
    初期化
 ========================= */
 init();
@@ -228,6 +212,7 @@ init();
 function init(){
   bind();
   createButtons();
+  updateModeUI();
   render();
 }
 
@@ -244,7 +229,7 @@ function bind(){
 }
 
 /* =========================
-   UI
+   フォーム
 ========================= */
 function toggleForm(){
   formBox.style.display =
@@ -252,13 +237,13 @@ function toggleForm(){
 }
 
 /* =========================
-   ボタン生成（ここ修正済み）
+   ボタン生成
 ========================= */
 function createButtons(){
-  make(areaButtons,AREAS,"area");
-  make(typeButtons,TYPES,"type");
-  make(filterAreaEl,AREAS,"filterArea");
-  make(filterTypeEl,TYPES,"filterType");
+  make(area-buttons,AREAS,"area");
+  make(type-buttons,TYPES,"type");
+  make(filter-area,AREAS,"filterArea");
+  make(filter-type,TYPES,"filterType");
 }
 
 function make(target,list,mode){
@@ -272,7 +257,7 @@ function make(target,list,mode){
 }
 
 /* =========================
-   タグ操作
+   タグ
 ========================= */
 function handleTag(mode,item){
 
@@ -336,7 +321,7 @@ function saveSpot(){
 }
 
 /* =========================
-   安全取得（AND/OR崩壊防止）
+   安全取得
 ========================= */
 function getTypes(s){
   return Array.isArray(s.tags?.types) ? s.tags.types : [];
@@ -365,9 +350,7 @@ function filterData(){
 
       if(state.filter.mode==="AND"){
         if(!state.filter.types.every(t=>types.includes(t))) return false;
-      }
-
-      if(state.filter.mode==="OR"){
+      }else{
         if(!state.filter.types.some(t=>types.includes(t))) return false;
       }
     }
@@ -380,10 +363,25 @@ function filterData(){
 }
 
 /* =========================
-   active制御
+   モード表示（ここ変更ポイント）
+========================= */
+function toggleMode(){
+  state.filter.mode = state.filter.mode==="AND"?"OR":"AND";
+  updateModeUI();
+  render();
+}
+
+function updateModeUI(){
+  modeBtn.innerText =
+    state.filter.mode==="AND"
+      ? "AND検索"
+      : "OR検索";
+}
+
+/* =========================
+   active表示
 ========================= */
 function updateActiveButtons(){
-
   document.querySelectorAll(".tag-btn").forEach(btn=>{
     const t=btn.innerText;
 
@@ -448,11 +446,6 @@ function toggleFavorite(name){
 ========================= */
 function toggleFavFilter(){
   state.filter.favOnly=!state.filter.favOnly;
-  render();
-}
-
-function toggleMode(){
-  state.filter.mode=state.filter.mode==="AND"?"OR":"AND";
   render();
 }
 
