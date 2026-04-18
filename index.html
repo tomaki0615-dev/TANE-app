@@ -13,6 +13,7 @@ body{
   font-size:17px;
 }
 
+/* ===== ヘッダー ===== */
 header{
   position:fixed;
   top:0;
@@ -20,21 +21,17 @@ header{
   background:rgba(255,255,255,0.95);
   backdrop-filter:blur(10px);
   border-bottom:1px solid #ddd;
-  padding:12px;
+  padding:10px;
   text-align:center;
   font-weight:bold;
   z-index:1000;
 }
 
-.container{
-  padding:70px 10px 20px;
-}
-
-/* タブ */
+/* ===== タブ ===== */
 .tabs{
   display:flex;
   position:fixed;
-  top:48px;
+  top:44px;
   width:100%;
   background:white;
   border-bottom:1px solid #ddd;
@@ -46,7 +43,6 @@ header{
   padding:12px;
   text-align:center;
   cursor:pointer;
-  user-select:none;
 }
 
 .tab.active{
@@ -54,7 +50,12 @@ header{
   color:white;
 }
 
-/* 共通 */
+/* ===== コンテンツずらし（重要修正） ===== */
+.container{
+  padding:110px 10px 20px;
+}
+
+/* ===== UI ===== */
 input, textarea{
   width:100%;
   padding:14px;
@@ -71,7 +72,6 @@ button{
   background:#e5e7eb;
 }
 
-/* タグ */
 .tag-btn{
   padding:10px 14px;
   margin:4px;
@@ -86,7 +86,7 @@ button{
   color:white;
 }
 
-/* カード */
+/* ===== カード ===== */
 .card{
   display:flex;
   gap:10px;
@@ -104,7 +104,13 @@ button{
   border-radius:10px;
 }
 
-/* セクション */
+.card-actions{
+  display:flex;
+  gap:6px;
+  margin-top:6px;
+}
+
+/* ===== 表示切替 ===== */
 .page{ display:none; }
 .page.active{ display:block; }
 
@@ -120,7 +126,6 @@ button{
 
 <header>🌴 種子島スポット検索</header>
 
-<!-- タブ -->
 <div class="tabs">
   <div class="tab active" onclick="switchTab('search')">検索</div>
   <div class="tab" onclick="switchTab('add')">追加</div>
@@ -128,14 +133,11 @@ button{
 
 <div class="container">
 
-<!-- =========================
-     検索ページ
-========================= -->
+<!-- ================= 検索 ================= -->
 <div id="searchPage" class="page active">
 
   <input id="search" placeholder="検索">
 
-  <button onclick="toggleFavFilter()">⭐ お気に入り</button>
   <button id="andBtn" onclick="toggleAndMode()">☑ AND検索</button>
 
   <div>
@@ -150,9 +152,7 @@ button{
 
 </div>
 
-<!-- =========================
-     追加ページ
-========================= -->
+<!-- ================= 追加 / 編集 ================= -->
 <div id="addPage" class="page">
 
   <div>エリア</div>
@@ -199,17 +199,17 @@ const imageEl = el("image");
 const previewEl = el("preview");
 
 const spotList = el("spot-list");
-
 const andBtn = el("andBtn");
 
 /* =========================
    状態
 ========================= */
+let editIndex = null;
+
 let state = {
   page:"search",
 
   spots: JSON.parse(localStorage.getItem("spots")) || [],
-  favorites: JSON.parse(localStorage.getItem("fav")) || [],
 
   form:{
     area:"",
@@ -220,9 +220,8 @@ let state = {
   filter:{
     area:"",
     types:[],
-    favOnly:false,
-    andMode:true,
-    keyword:""
+    keyword:"",
+    andMode:true
   }
 };
 
@@ -239,7 +238,7 @@ function init(){
 }
 
 /* =========================
-   タブ切替
+   タブ
 ========================= */
 function switchTab(tab){
   state.page = tab;
@@ -280,7 +279,7 @@ function bind(){
 }
 
 /* =========================
-   ボタン生成（分離で安定化）
+   ボタン生成
 ========================= */
 function createButtons(){
   make("area-buttons",AREAS,"area");
@@ -330,6 +329,70 @@ function handleTag(mode,item){
 }
 
 /* =========================
+   保存（追加＋編集）
+========================= */
+function saveSpot(){
+
+  const data = {
+    name:nameEl.value,
+    desc:descEl.value,
+    tags:{
+      area:state.form.area,
+      types:state.form.types
+    },
+    img:state.form.image
+  };
+
+  if(editIndex !== null){
+    state.spots[editIndex] = data;
+    editIndex = null;
+  }else{
+    state.spots.push(data);
+  }
+
+  localStorage.setItem("spots",JSON.stringify(state.spots));
+
+  resetForm();
+  switchTab("search");
+  render();
+}
+
+/* =========================
+   編集
+========================= */
+function editSpot(i){
+  const s = state.spots[i];
+
+  nameEl.value = s.name;
+  descEl.value = s.desc;
+
+  state.form.area = s.tags?.area || "";
+  state.form.types = s.tags?.types || [];
+  state.form.image = s.img || "";
+
+  if(s.img){
+    previewEl.src = s.img;
+    previewEl.style.display="block";
+  }
+
+  editIndex = i;
+
+  switchTab("add");
+}
+
+/* =========================
+   フォームリセット
+========================= */
+function resetForm(){
+  nameEl.value="";
+  descEl.value="";
+  state.form.area="";
+  state.form.types=[];
+  state.form.image="";
+  previewEl.style.display="none";
+}
+
+/* =========================
    AND/OR
 ========================= */
 function toggleAndMode(){
@@ -347,29 +410,6 @@ function updateAndUI(){
 }
 
 /* =========================
-   保存
-========================= */
-function saveSpot(){
-  if(!nameEl.value.trim()) return alert("名前必須");
-
-  state.spots.push({
-    name:nameEl.value,
-    desc:descEl.value,
-    tags:{
-      area:state.form.area,
-      types:state.form.types
-    },
-    img:state.form.image
-  });
-
-  localStorage.setItem("spots",JSON.stringify(state.spots));
-
-  // 追加後は検索へ戻す
-  switchTab("search");
-  render();
-}
-
-/* =========================
    フィルター
 ========================= */
 function getTypes(s){
@@ -381,7 +421,7 @@ function getArea(s){
 }
 
 function filterData(){
-  const k=state.filter.keyword.toLowerCase();
+  const k = state.filter.keyword.toLowerCase();
 
   return state.spots.filter(s=>{
 
@@ -411,7 +451,8 @@ function render(){
 
   spotList.innerHTML="";
 
-  filterData().forEach(s=>{
+  filterData().forEach((s,i)=>{
+
     const d=document.createElement("div");
     d.className="card";
 
@@ -423,44 +464,16 @@ function render(){
         <div style="font-size:12px;color:#666;">
           ${getArea(s)} ${(getTypes(s)).join(", ")}
         </div>
+
+        <div class="card-actions">
+          <button onclick="editSpot(${i})">編集</button>
+        </div>
+
       </div>
     `;
 
     spotList.appendChild(d);
   });
-
-  updateActive();
-}
-
-/* =========================
-   active管理（完全分離）
-========================= */
-function updateActive(){
-
-  document.querySelectorAll(".tag-btn").forEach(b=>{
-    const t=b.innerText;
-
-    const active =
-      t===state.form.area ||
-      t===state.filter.area ||
-      state.form.types.includes(t) ||
-      state.filter.types.includes(t);
-
-    b.classList.toggle("active",active);
-  });
-}
-
-/* =========================
-   その他
-========================= */
-function toggleFavFilter(){
-  state.filter.favOnly=!state.filter.favOnly;
-  render();
-}
-
-function exportData(){
-  navigator.clipboard.writeText(JSON.stringify(state.spots,null,2));
-  alert("コピーしたよ");
 }
 
 </script>
