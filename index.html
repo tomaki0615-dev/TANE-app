@@ -17,7 +17,7 @@ header{
   position:fixed;
   top:0;
   width:100%;
-  background:rgba(255,255,255,0.9);
+  background:rgba(255,255,255,0.92);
   backdrop-filter:blur(10px);
   border-bottom:1px solid #ddd;
   padding:14px;
@@ -104,14 +104,8 @@ button{
   margin-bottom:15px;
 }
 
-/* チェック風ボタン */
-.check-btn{
-  width:100%;
-  margin-top:10px;
-  background:#e5e7eb;
-}
-
-.check-btn.on{
+/* ANDトグル */
+#andBtn.on{
   background:#3b82f6;
   color:white;
 }
@@ -138,7 +132,7 @@ button{
   <textarea id="desc" placeholder="説明"></textarea>
 
   <input type="file" id="image">
-  <img id="preview" style="display:none; width:100%; border-radius:10px;">
+  <img id="preview" style="display:none;width:100%;border-radius:10px;">
 
   <button onclick="saveSpot()">保存</button>
 </div>
@@ -150,10 +144,7 @@ button{
   <button onclick="exportData()">📤</button>
 </div>
 
-<!-- AND検索トグル（ここが本体） -->
-<button id="andBtn" class="check-btn" onclick="toggleAndMode()">
-  ☑ AND検索
-</button>
+<button id="andBtn" onclick="toggleAndMode()">AND検索</button>
 
 <div>
   <div>エリア</div>
@@ -170,7 +161,7 @@ button{
 <script>
 
 /* =========================
-   タグ
+   データ
 ========================= */
 const AREAS=["北部","中部","南部"];
 
@@ -182,26 +173,28 @@ const TYPES=[
 ];
 
 /* =========================
-   DOM
+   DOM（安全取得）
 ========================= */
-const nameEl=document.getElementById("name");
-const descEl=document.getElementById("desc");
-const searchEl=document.getElementById("search");
-const imageEl=document.getElementById("image");
-const previewEl=document.getElementById("preview");
+const el = (id)=>document.getElementById(id);
 
-const areaButtons=document.getElementById("area-buttons");
-const typeButtons=document.getElementById("type-buttons");
-const filterAreaEl=document.getElementById("filter-area");
-const filterTypeEl=document.getElementById("filter-type");
-const spotList=document.getElementById("spot-list");
+const nameEl = el("name");
+const descEl = el("desc");
+const searchEl = el("search");
+const imageEl = el("image");
+const previewEl = el("preview");
 
-const andBtn=document.getElementById("andBtn");
+const areaButtons = el("area-buttons");
+const typeButtons = el("type-buttons");
+const filterAreaEl = el("filter-area");
+const filterTypeEl = el("filter-type");
+const spotList = el("spot-list");
+const formBox = el("formBox");
+const andBtn = el("andBtn");
 
 /* =========================
    状態
 ========================= */
-let state={
+let state = {
   spots: JSON.parse(localStorage.getItem("spots")) || [],
   favorites: JSON.parse(localStorage.getItem("fav")) || [],
 
@@ -215,7 +208,7 @@ let state={
     area:"",
     types:[],
     favOnly:false,
-    andMode:true,   // ←ここがON/OFF本体
+    andMode:true,
     keyword:""
   }
 };
@@ -253,13 +246,13 @@ function toggleForm(){
 }
 
 /* =========================
-   ボタン生成
+   ボタン生成（ここが重要）
 ========================= */
 function createButtons(){
-  make(area-buttons,AREAS,"area");
-  make(type-buttons,TYPES,"type");
-  make(filter-area,AREAS,"filterArea");
-  make(filter-type,TYPES,"filterType");
+  make(areaButtons,AREAS,"area");
+  make(typeButtons,TYPES,"type");
+  make(filterAreaEl,AREAS,"filterArea");
+  make(filterTypeEl,TYPES,"filterType");
 }
 
 function make(target,list,mode){
@@ -273,7 +266,7 @@ function make(target,list,mode){
 }
 
 /* =========================
-   タグ
+   タグ処理
 ========================= */
 function handleTag(mode,item){
 
@@ -382,7 +375,6 @@ function filterData(){
     const types=getTypes(s);
 
     if(state.filter.types.length){
-
       if(state.filter.andMode){
         if(!state.filter.types.every(t=>types.includes(t))) return false;
       }else{
@@ -432,7 +424,7 @@ function render(){
 }
 
 /* =========================
-   active
+   active表示
 ========================= */
 function updateActiveButtons(){
   document.querySelectorAll(".tag-btn").forEach(btn=>{
