@@ -21,7 +21,6 @@ header {
   margin:auto;
 }
 
-/* 入力 */
 input, textarea {
   width:100%;
   padding:12px;
@@ -31,7 +30,6 @@ input, textarea {
   font-size:16px;
 }
 
-/* ボタン全体強化 */
 button {
   padding:12px 16px;
   font-size:15px;
@@ -41,7 +39,7 @@ button {
   cursor:pointer;
 }
 
-/* タグボタン */
+/* タグ */
 .tag-btn {
   display:inline-block;
   padding:10px 14px;
@@ -65,6 +63,12 @@ button {
   border-radius:14px;
 }
 
+img {
+  width:100%;
+  border-radius:10px;
+  margin-bottom:10px;
+}
+
 /* 折りたたみ */
 .toggle-btn {
   width:100%;
@@ -72,7 +76,6 @@ button {
   color:white;
 }
 
-/* フォーム */
 .form-box {
   display:none;
   background:white;
@@ -89,7 +92,7 @@ button {
 
 <div class="container">
 
-<!-- 追加フォーム -->
+<!-- 追加 -->
 <button class="toggle-btn" onclick="toggleForm()">➕ スポット追加</button>
 
 <div id="formBox" class="form-box">
@@ -102,6 +105,9 @@ button {
 
   <input id="name" placeholder="名前">
   <textarea id="desc" placeholder="説明"></textarea>
+
+  <input type="file" id="image" accept="image/*">
+  <img id="preview" style="display:none;">
 
   <button onclick="saveSpot()">保存</button>
 
@@ -128,15 +134,18 @@ button {
 </div>
 
 <script>
+// ===== 定義 =====
 const AREAS=["北部","中部","南部"];
 const TYPES=["カフェ","レストラン","パン","ホテル","スーパー","ドラッグストア","コンビニ","土産","個人商店","無人販売","港","空港","レンタカー","レジャー","温泉","神社","工場","家畜","公園","海岸","星空","宇宙","博物館","絶景","猫","知人友人・親戚","その他"];
 
+// ===== 状態 =====
 let spots=JSON.parse(localStorage.getItem("spots"))||[];
 let favorites=JSON.parse(localStorage.getItem("fav"))||[];
 
 let selectedArea="", selectedTypes=[];
 let filterArea="", filterTypes=[];
 let showFavOnly=false, isAndMode=true;
+let imageData="";
 
 // ===== 折りたたみ =====
 function toggleForm(){
@@ -156,11 +165,12 @@ function createButtons(target, list, callback){
 }
 
 // 追加用
-createButtons(document.getElementById("area-buttons"), AREAS, (a)=>{
+createButtons(areaButtons, AREAS, (a)=>{
   selectedArea = selectedArea===a?"":a;
-  renderButtons(); });
+  renderButtons();
+});
 
-createButtons(document.getElementById("type-buttons"), TYPES, (t)=>{
+createButtons(typeButtons, TYPES, (t)=>{
   selectedTypes.includes(t)
     ? selectedTypes=selectedTypes.filter(x=>x!==t)
     : selectedTypes.push(t);
@@ -168,29 +178,52 @@ createButtons(document.getElementById("type-buttons"), TYPES, (t)=>{
 });
 
 // フィルター用
-createButtons(document.getElementById("filter-area"), AREAS, (a)=>{
+createButtons(filterAreaEl, AREAS, (a)=>{
   filterArea = filterArea===a?"":a;
   renderButtons(); render();
 });
 
-createButtons(document.getElementById("filter-type"), TYPES, (t)=>{
+createButtons(filterTypeEl, TYPES, (t)=>{
   filterTypes.includes(t)
     ? filterTypes=filterTypes.filter(x=>x!==t)
     : filterTypes.push(t);
   renderButtons(); render();
 });
 
+// DOM取得
+const areaButtons=document.getElementById("area-buttons");
+const typeButtons=document.getElementById("type-buttons");
+const filterAreaEl=document.getElementById("filter-area");
+const filterTypeEl=document.getElementById("filter-type");
+
 function renderButtons(){
   document.querySelectorAll(".tag-btn").forEach(btn=>{
-    const text=btn.innerText;
+    const t=btn.innerText;
     btn.classList.toggle("active",
-      text===selectedArea ||
-      selectedTypes.includes(text) ||
-      text===filterArea ||
-      filterTypes.includes(text)
+      t===selectedArea ||
+      selectedTypes.includes(t) ||
+      t===filterArea ||
+      filterTypes.includes(t)
     );
   });
 }
+
+// ===== 画像 =====
+const imageInput=document.getElementById("image");
+const preview=document.getElementById("preview");
+
+imageInput.addEventListener("change", e=>{
+  const file=e.target.files[0];
+  if(!file) return;
+
+  const reader=new FileReader();
+  reader.onload=()=>{
+    imageData=reader.result;
+    preview.src=imageData;
+    preview.style.display="block";
+  };
+  reader.readAsDataURL(file);
+});
 
 // ===== 保存 =====
 function saveSpot(){
@@ -200,16 +233,12 @@ function saveSpot(){
   if(!name) return alert("名前必須");
 
   const tags=[selectedArea,...selectedTypes].filter(Boolean);
-  spots.push({name,desc,tags});
+
+  spots.push({name,desc,tags,img:imageData});
 
   localStorage.setItem("spots",JSON.stringify(spots));
 
-  nameInput.value="";
-  descInput.value="";
-  selectedArea="";
-  selectedTypes=[];
-
-  renderButtons();
+  clearForm();
   render();
 }
 
@@ -236,7 +265,9 @@ function render(){
     div.className="card";
 
     div.innerHTML=`
+      ${s.img?`<img src="${s.img}">`:""}
       <h3>${s.name}</h3>
+      <div>${s.desc||""}</div>
       <div>${s.tags.join(", ")}</div>
 
       <button onclick="toggleFavorite('${s.name}')">
@@ -269,8 +300,21 @@ function toggleMode(){
   render();
 }
 
+function clearForm(){
+  nameInput.value="";
+  descInput.value="";
+  selectedArea="";
+  selectedTypes=[];
+  imageInput.value="";
+  preview.style.display="none";
+  imageData="";
+  renderButtons();
+}
+
+// DOM
 const nameInput=document.getElementById("name");
 const descInput=document.getElementById("desc");
+const search=document.getElementById("search");
 
 search.addEventListener("input",render);
 
