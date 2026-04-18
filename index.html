@@ -43,18 +43,39 @@ button {
 .secondary { background:#e5e7eb; }
 .danger { background:#ef4444; color:white; }
 
+/* 通知 */
+.toast {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #16a34a;
+  color: white;
+  padding: 10px 20px;
+  border-radius: 20px;
+  display: none;
+}
+
+/* 編集中 */
+.editing {
+  background: #fef3c7;
+  padding: 8px;
+  border-radius: 8px;
+  margin-bottom: 10px;
+  font-size: 13px;
+}
+
 .card {
   background:white;
   padding:15px;
   margin-bottom:12px;
   border-radius:12px;
-  box-shadow:0 2px 6px rgba(0,0,0,0.05);
 }
 
 img {
-  width: 100%;
-  border-radius: 10px;
-  margin-bottom: 8px;
+  width:100%;
+  border-radius:10px;
+  margin-bottom:8px;
 }
 
 .tag {
@@ -87,6 +108,8 @@ img {
 
 <input type="text" id="search" placeholder="検索...">
 
+<div id="editingLabel" class="editing" style="display:none;"></div>
+
 <div class="form-box">
   <h3>➕ スポット追加 / 編集</h3>
   <input id="name" placeholder="名前">
@@ -94,7 +117,6 @@ img {
   <textarea id="desc" placeholder="説明"></textarea>
 
   <input type="file" id="image" accept="image/*">
-
   <img id="preview" style="display:none;">
 
   <button class="primary" onclick="saveSpot()">保存</button>
@@ -106,20 +128,36 @@ img {
 
 </div>
 
+<div id="toast" class="toast">保存しました！</div>
+
 <script>
 let spots = JSON.parse(localStorage.getItem("spots")) || [];
-let editTarget = null;
+let editIndex = null;
 let imageData = "";
 
-// ===== 画像プレビュー =====
-document.getElementById("image").addEventListener("change", function(e) {
+const nameInput = document.getElementById("name");
+const tagsInput = document.getElementById("tags");
+const descInput = document.getElementById("desc");
+const imageInput = document.getElementById("image");
+const preview = document.getElementById("preview");
+const editingLabel = document.getElementById("editingLabel");
+
+// ===== トースト =====
+function showToast(msg) {
+  const toast = document.getElementById("toast");
+  toast.innerText = msg;
+  toast.style.display = "block";
+  setTimeout(() => toast.style.display = "none", 1500);
+}
+
+// ===== 画像 =====
+imageInput.addEventListener("change", function(e) {
   const file = e.target.files[0];
   if (!file) return;
 
   const reader = new FileReader();
   reader.onload = function() {
     imageData = reader.result;
-    const preview = document.getElementById("preview");
     preview.src = imageData;
     preview.style.display = "block";
   };
@@ -138,34 +176,39 @@ function saveSpot() {
 
   if (!name) return alert("名前必須");
 
-  if (editTarget) {
-    editTarget.name = name;
-    editTarget.tags = tags;
-    editTarget.desc = desc;
-    if (imageData) editTarget.img = imageData;
-    editTarget = null;
+  const newData = { name, tags, desc, img: imageData };
+
+  if (editIndex !== null) {
+    if (!imageData) newData.img = spots[editIndex].img;
+    spots[editIndex] = newData;
   } else {
-    spots.push({ name, tags, desc, img:imageData });
+    spots.push(newData);
   }
 
   saveAll();
   clearForm();
   render();
+  showToast("保存しました！");
 }
 
+// ===== 編集 =====
 function editSpot(i) {
   const s = spots[i];
-  editTarget = s;
+  editIndex = i;
 
   nameInput.value = s.name;
   tagsInput.value = s.tags.join(",");
   descInput.value = s.desc;
+
   imageData = s.img || "";
 
   if (s.img) {
     preview.src = s.img;
     preview.style.display = "block";
   }
+
+  editingLabel.innerText = "✏️ 編集中: " + s.name;
+  editingLabel.style.display = "block";
 }
 
 function deleteSpot(i) {
@@ -173,15 +216,19 @@ function deleteSpot(i) {
   spots.splice(i,1);
   saveAll();
   render();
+  showToast("削除しました");
 }
 
 function clearForm() {
   nameInput.value="";
   tagsInput.value="";
   descInput.value="";
-  image.value="";
+  imageInput.value="";
   preview.style.display="none";
   imageData="";
+  editIndex=null;
+
+  editingLabel.style.display = "none";
 }
 
 // ===== 表示 =====
@@ -198,7 +245,6 @@ function render() {
 
       div.innerHTML = `
         ${s.img ? `<img src="${s.img}">` : ""}
-
         <h2>${s.name}</h2>
         <div>${s.desc || ""}</div>
 
@@ -221,17 +267,10 @@ function render() {
 function exportData() {
   const text = JSON.stringify(spots,null,2);
   navigator.clipboard.writeText(text);
-  alert("コピーしました");
+  showToast("コピーしました");
 }
 
 search.addEventListener("input", render);
-
-// 初期化
-const nameInput = document.getElementById("name");
-const tagsInput = document.getElementById("tags");
-const descInput = document.getElementById("desc");
-const image = document.getElementById("image");
-const preview = document.getElementById("preview");
 
 render();
 </script>
