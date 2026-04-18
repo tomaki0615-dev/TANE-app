@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 
-<title>種子島ガイド</title>
+<title>種子島スポット検索</title>
 
 <style>
 body{
@@ -109,7 +109,7 @@ button{
 
 <body>
 
-<header>🌴 種子島ガイド</header>
+<header>🌴 種子島スポット検索</header>
 
 <div class="container">
 
@@ -167,6 +167,15 @@ const TYPES=[
 ];
 
 /* =========================
+   DOM（重要：バグ修正済み）
+========================= */
+const nameEl = document.getElementById("name");
+const descEl = document.getElementById("desc");
+const searchEl = document.getElementById("search");
+const imageEl = document.getElementById("image");
+const previewEl = document.getElementById("preview");
+
+/* =========================
    状態
 ========================= */
 let state = {
@@ -189,7 +198,7 @@ let state = {
 };
 
 /* =========================
-   旧データ自動修復
+   旧データ互換
 ========================= */
 state.spots = state.spots.map(s=>{
   if(Array.isArray(s.tags)){
@@ -205,7 +214,7 @@ state.spots = state.spots.map(s=>{
 });
 
 /* =========================
-   DOM
+   DOM取得
 ========================= */
 const areaButtons=document.getElementById("area-buttons");
 const typeButtons=document.getElementById("type-buttons");
@@ -229,12 +238,12 @@ function init(){
    イベント
 ========================= */
 function bind(){
-  search.oninput=e=>{
+  searchEl.oninput=e=>{
     state.filter.keyword=e.target.value;
     render();
   };
 
-  image.onchange=handleImage;
+  imageEl.onchange=handleImage;
 }
 
 /* =========================
@@ -303,21 +312,21 @@ function handleImage(e){
   const r=new FileReader();
   r.onload=()=>{
     state.form.image=r.result;
-    preview.src=r.result;
-    preview.style.display="block";
+    previewEl.src=r.result;
+    previewEl.style.display="block";
   };
   r.readAsDataURL(f);
 }
 
 /* =========================
-   保存
+   保存（完全修正版）
 ========================= */
 function saveSpot(){
-  if(!name.value.trim()) return alert("名前必須");
+  if(!nameEl.value.trim()) return alert("名前必須");
 
   state.spots.push({
-    name:name.value,
-    desc:desc.value,
+    name:nameEl.value,
+    desc:descEl.value,
     tags:{
       area:state.form.area,
       types:state.form.types
@@ -358,7 +367,7 @@ function filterData(){
 }
 
 /* =========================
-   active表示（完全修正版）
+   active制御
 ========================= */
 function updateActiveButtons(){
 
