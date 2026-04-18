@@ -103,6 +103,18 @@ button{
   border-radius:12px;
   margin-bottom:15px;
 }
+
+/* チェック風ボタン */
+.check-btn{
+  width:100%;
+  margin-top:10px;
+  background:#e5e7eb;
+}
+
+.check-btn.on{
+  background:#3b82f6;
+  color:white;
+}
 </style>
 </head>
 
@@ -135,9 +147,13 @@ button{
 
 <div class="row-btn">
   <button onclick="toggleFavFilter()">⭐</button>
-  <button onclick="toggleMode()" id="modeBtn">AND検索</button>
   <button onclick="exportData()">📤</button>
 </div>
+
+<!-- AND検索トグル（ここが本体） -->
+<button id="andBtn" class="check-btn" onclick="toggleAndMode()">
+  ☑ AND検索
+</button>
 
 <div>
   <div>エリア</div>
@@ -179,8 +195,8 @@ const typeButtons=document.getElementById("type-buttons");
 const filterAreaEl=document.getElementById("filter-area");
 const filterTypeEl=document.getElementById("filter-type");
 const spotList=document.getElementById("spot-list");
-const formBox=document.getElementById("formBox");
-const modeBtn=document.getElementById("modeBtn");
+
+const andBtn=document.getElementById("andBtn");
 
 /* =========================
    状態
@@ -199,7 +215,7 @@ let state={
     area:"",
     types:[],
     favOnly:false,
-    mode:"AND",
+    andMode:true,   // ←ここがON/OFF本体
     keyword:""
   }
 };
@@ -212,7 +228,7 @@ init();
 function init(){
   bind();
   createButtons();
-  updateModeUI();
+  updateAndUI();
   render();
 }
 
@@ -285,6 +301,25 @@ function handleTag(mode,item){
 }
 
 /* =========================
+   ANDトグル（チェック式）
+========================= */
+function toggleAndMode(){
+  state.filter.andMode = !state.filter.andMode;
+  updateAndUI();
+  render();
+}
+
+function updateAndUI(){
+  if(state.filter.andMode){
+    andBtn.innerText="☑ AND検索";
+    andBtn.classList.add("on");
+  }else{
+    andBtn.innerText="☐ AND検索";
+    andBtn.classList.remove("on");
+  }
+}
+
+/* =========================
    画像
 ========================= */
 function handleImage(e){
@@ -348,7 +383,7 @@ function filterData(){
 
     if(state.filter.types.length){
 
-      if(state.filter.mode==="AND"){
+      if(state.filter.andMode){
         if(!state.filter.types.every(t=>types.includes(t))) return false;
       }else{
         if(!state.filter.types.some(t=>types.includes(t))) return false;
@@ -359,39 +394,6 @@ function filterData(){
       !state.favorites.includes(s.name)) return false;
 
     return true;
-  });
-}
-
-/* =========================
-   モード表示（ここ変更ポイント）
-========================= */
-function toggleMode(){
-  state.filter.mode = state.filter.mode==="AND"?"OR":"AND";
-  updateModeUI();
-  render();
-}
-
-function updateModeUI(){
-  modeBtn.innerText =
-    state.filter.mode==="AND"
-      ? "AND検索"
-      : "OR検索";
-}
-
-/* =========================
-   active表示
-========================= */
-function updateActiveButtons(){
-  document.querySelectorAll(".tag-btn").forEach(btn=>{
-    const t=btn.innerText;
-
-    const active =
-      t===state.form.area ||
-      t===state.filter.area ||
-      state.form.types.includes(t) ||
-      state.filter.types.includes(t);
-
-    btn.classList.toggle("active",active);
   });
 }
 
@@ -426,6 +428,23 @@ function render(){
     `;
 
     spotList.appendChild(d);
+  });
+}
+
+/* =========================
+   active
+========================= */
+function updateActiveButtons(){
+  document.querySelectorAll(".tag-btn").forEach(btn=>{
+    const t=btn.innerText;
+
+    const active =
+      t===state.form.area ||
+      t===state.filter.area ||
+      state.form.types.includes(t) ||
+      state.filter.types.includes(t);
+
+    btn.classList.toggle("active",active);
   });
 }
 
