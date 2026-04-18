@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 
-<title>種子島スポット検索</title>
+<title>種子島スポット</title>
 
 <style>
 body{
@@ -62,13 +62,12 @@ input, textarea{
   border-radius:12px;
   border:1px solid #ddd;
   margin-bottom:10px;
-  font-size:16px;
 }
 
 /* ボタン */
 button{
-  padding:12px;
-  border-radius:12px;
+  padding:10px 12px;
+  border-radius:10px;
   border:none;
   background:#e5e7eb;
   cursor:pointer;
@@ -98,6 +97,7 @@ button{
   margin-bottom:12px;
   border-radius:16px;
   box-shadow:0 2px 6px rgba(0,0,0,0.05);
+  cursor:grab;
 }
 
 .card img{
@@ -105,6 +105,17 @@ button{
   height:80px;
   object-fit:cover;
   border-radius:10px;
+}
+
+.card-actions{
+  display:flex;
+  gap:6px;
+  margin-top:6px;
+}
+
+.delete-btn{
+  background:#ef4444;
+  color:white;
 }
 
 /* 表示 */
@@ -120,7 +131,7 @@ button{
 
 <body>
 
-<header>🌴 種子島スポット検索</header>
+<header>🌴 種子島スポット</header>
 
 <div class="tabs">
   <div class="tab active" onclick="switchTab('search')">検索</div>
@@ -151,9 +162,7 @@ button{
 <!-- ================= 追加 ================= -->
 <div id="addPage" class="page">
 
-  <!-- 👇 名前を最上部へ移動 -->
   <input id="name" placeholder="名前">
-
   <textarea id="desc" placeholder="説明"></textarea>
 
   <div>エリア</div>
@@ -174,7 +183,7 @@ button{
 <script>
 
 /* =========================
-   タグ（6個削除済み）
+   データ
 ========================= */
 const AREAS=["北部","中部","南部"];
 
@@ -185,22 +194,10 @@ const TYPES=[
 ];
 
 /* =========================
-   DOM
-========================= */
-const el = id => document.getElementById(id);
-
-const searchEl = el("search");
-const nameEl = el("name");
-const descEl = el("desc");
-const imageEl = el("image");
-const previewEl = el("preview");
-
-const spotList = el("spot-list");
-const andBtn = el("andBtn");
-
-/* =========================
    状態
 ========================= */
+let dragIndex = null;
+
 let state = {
   spots: JSON.parse(localStorage.getItem("spots")) || [],
 
@@ -231,20 +228,18 @@ function init(){
 }
 
 /* =========================
-   タブ
+   DOM
 ========================= */
-function switchTab(tab){
-  document.querySelectorAll(".page").forEach(p=>p.classList.remove("active"));
-  document.querySelectorAll(".tab").forEach(t=>t.classList.remove("active"));
+const el = id => document.getElementById(id);
 
-  if(tab==="search"){
-    el("searchPage").classList.add("active");
-    document.querySelectorAll(".tab")[0].classList.add("active");
-  }else{
-    el("addPage").classList.add("active");
-    document.querySelectorAll(".tab")[1].classList.add("active");
-  }
-}
+const searchEl = el("search");
+const nameEl = el("name");
+const descEl = el("desc");
+const imageEl = el("image");
+const previewEl = el("preview");
+
+const spotList = el("spot-list");
+const andBtn = el("andBtn");
 
 /* =========================
    イベント
@@ -323,7 +318,6 @@ function handleTag(mode,item){
    保存
 ========================= */
 function saveSpot(){
-  if(!nameEl.value.trim()) return alert("名前必須");
 
   state.spots.push({
     name:nameEl.value,
@@ -345,6 +339,17 @@ function saveSpot(){
   previewEl.style.display="none";
 
   switchTab("search");
+  render();
+}
+
+/* =========================
+   削除 ★NEW
+========================= */
+function deleteSpot(i){
+  if(!confirm("このスポットを削除する？")) return;
+
+  state.spots.splice(i,1);
+  localStorage.setItem("spots",JSON.stringify(state.spots));
   render();
 }
 
@@ -385,7 +390,8 @@ function render(){
 
   spotList.innerHTML="";
 
-  filterData().forEach(s=>{
+  filterData().forEach((s,i)=>{
+
     const d=document.createElement("div");
     d.className="card";
 
@@ -397,6 +403,11 @@ function render(){
         <div style="font-size:12px;color:#666;">
           ${getArea(s)} ${(getTypes(s)).join(", ")}
         </div>
+
+        <div class="card-actions">
+          <button onclick="deleteSpot(${i})" class="delete-btn">削除</button>
+        </div>
+
       </div>
     `;
 
@@ -407,7 +418,7 @@ function render(){
 }
 
 /* =========================
-   active同期
+   active
 ========================= */
 function updateActive(){
 
@@ -439,6 +450,19 @@ function updateAndUI(){
     : "☐ AND検索";
 
   andBtn.classList.toggle("on",state.filter.andMode);
+}
+
+function switchTab(tab){
+  document.querySelectorAll(".page").forEach(p=>p.classList.remove("active"));
+  document.querySelectorAll(".tab").forEach(t=>t.classList.remove("active"));
+
+  if(tab==="search"){
+    el("searchPage").classList.add("active");
+    document.querySelectorAll(".tab")[0].classList.add("active");
+  }else{
+    el("addPage").classList.add("active");
+    document.querySelectorAll(".tab")[1].classList.add("active");
+  }
 }
 
 </script>
