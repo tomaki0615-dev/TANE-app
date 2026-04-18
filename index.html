@@ -202,7 +202,10 @@ let state = {
   spots: JSON.parse(localStorage.getItem("spots")) || [],
   favorites: JSON.parse(localStorage.getItem("fav")) || [],
 
+  editIndex: null,
+
   form:{ area:"", types:[], image:"" },
+
   filter:{
     area:"",
     types:[],
@@ -221,7 +224,7 @@ function init(){
   render();
 }
 
-/* タブ */
+/* ================= タブ ================= */
 function switchTab(tab){
   document.querySelectorAll(".page").forEach(p=>p.classList.remove("active"));
   document.querySelectorAll(".tab").forEach(t=>t.classList.remove("active"));
@@ -235,7 +238,7 @@ function switchTab(tab){
   }
 }
 
-/* イベント */
+/* ================= イベント ================= */
 function bind(){
   searchEl.oninput=e=>{
     state.filter.keyword=e.target.value;
@@ -256,7 +259,7 @@ function bind(){
   };
 }
 
-/* ボタン生成 */
+/* ================= ボタン ================= */
 function createButtons(){
   make("area-buttons",AREAS,"area");
   make("type-buttons",TYPES,"type");
@@ -276,7 +279,7 @@ function make(id,list,mode){
   });
 }
 
-/* タグ */
+/* ================= タグ ================= */
 function handleTag(mode,item){
 
   if(mode==="area"){
@@ -302,7 +305,7 @@ function handleTag(mode,item){
   render();
 }
 
-/* ⭐お気に入り */
+/* ================= お気に入り ================= */
 function toggleFav(name){
   state.favorites.includes(name)
     ? state.favorites = state.favorites.filter(f=>f!==name)
@@ -316,21 +319,43 @@ function isFav(name){
   return state.favorites.includes(name);
 }
 
-/* ⭐フィルターON/OFF */
-function toggleFavFilter(){
-  state.filter.favOnly = !state.filter.favOnly;
-  updateUI();
-  render();
+/* ================= 編集 ================= */
+function editSpot(i){
+  const s = state.spots[i];
+
+  state.editIndex = i;
+
+  nameEl.value = s.name;
+  descEl.value = s.desc;
+
+  state.form.area = s.tags?.area || "";
+  state.form.types = s.tags?.types || [];
+  state.form.image = s.img || "";
+
+  if(s.img){
+    previewEl.src = s.img;
+    previewEl.style.display = "block";
+  }
+
+  switchTab("add");
 }
 
-/* 保存 */
+/* ================= 保存 ================= */
 function saveSpot(){
-  state.spots.push({
+
+  const data = {
     name:nameEl.value,
     desc:descEl.value,
     tags:{ area:state.form.area, types:state.form.types },
     img:state.form.image
-  });
+  };
+
+  if(state.editIndex !== null){
+    state.spots[state.editIndex] = data;
+    state.editIndex = null;
+  }else{
+    state.spots.push(data);
+  }
 
   localStorage.setItem("spots",JSON.stringify(state.spots));
 
@@ -345,7 +370,7 @@ function saveSpot(){
   render();
 }
 
-/* フィルター */
+/* ================= フィルター ================= */
 function getTypes(s){ return s.tags?.types || []; }
 function getArea(s){ return s.tags?.area || ""; }
 
@@ -373,11 +398,11 @@ function filterData(){
   });
 }
 
-/* 描画 */
+/* ================= 描画 ================= */
 function render(){
   spotList.innerHTML="";
 
-  filterData().forEach(s=>{
+  filterData().forEach((s,i)=>{
     const d=document.createElement("div");
     d.className="card";
 
@@ -396,6 +421,8 @@ function render(){
         <div style="font-size:12px;color:#666;">
           ${getArea(s)} ${(getTypes(s)).join(", ")}
         </div>
+
+        <button onclick="editSpot(${i})">✏ 編集</button>
       </div>
     `;
 
@@ -403,9 +430,10 @@ function render(){
   });
 
   updateActive();
+  updateUI();
 }
 
-/* active */
+/* ================= active ================= */
 function updateActive(){
   document.querySelectorAll(".tag-btn").forEach(btn=>{
     const t=btn.innerText;
@@ -420,25 +448,24 @@ function updateActive(){
   });
 }
 
-/* UI更新 */
+/* ================= UI ================= */
 function updateUI(){
-
-  andBtn.innerText = state.filter.andMode
-    ? "☑ AND検索"
-    : "☐ AND検索";
-
+  andBtn.innerText = state.filter.andMode ? "☑ AND検索" : "☐ AND検索";
   andBtn.classList.toggle("on",state.filter.andMode);
 
-  favBtn.innerText = state.filter.favOnly
-    ? "⭐ お気に入りON"
-    : "☆ お気に入り";
-  
+  favBtn.innerText = state.filter.favOnly ? "⭐ お気に入りON" : "☆ お気に入り";
   favBtn.classList.toggle("on",state.filter.favOnly);
 }
 
-/* AND */
+/* ================= toggle ================= */
 function toggleAndMode(){
   state.filter.andMode=!state.filter.andMode;
+  updateUI();
+  render();
+}
+
+function toggleFavFilter(){
+  state.filter.favOnly=!state.filter.favOnly;
   updateUI();
   render();
 }
