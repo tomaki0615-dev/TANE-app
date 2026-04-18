@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>種子島ガイド</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+
+    h1 {
+      text-align: center;
+    }
+
+    #search {
+      width: 100%;
+      padding: 10px;
+      margin-bottom: 20px;
+    }
+
+    .card {
+      background: white;
+      padding: 15px;
+      margin-bottom: 10px;
+      border-radius: 10px;
+    }
+
+    .tags {
+      margin-top: 10px;
+    }
+
+    .tag {
+      display: inline-block;
+      background: #eee;
+      padding: 5px 10px;
+      margin-right: 5px;
+      border-radius: 5px;
+      font-size: 12px;
+      cursor: pointer;
+    }
+
+    .tag:hover {
+      background: #ddd;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>🌴 種子島スポット</h1>
+
+  <input type="text" id="search" placeholder="検索...">
+
+  <div id="spot-list"></div>
+
+  <script>
+    const spots = [
+      {
+        name: "種子島宇宙センター",
+        description: "ロケット打ち上げで有名",
+        tags: ["観光", "宇宙"]
+      },
+      {
+        name: "千座の岩屋",
+        description: "干潮時だけ入れる洞窟",
+        tags: ["絶景", "海"]
+      },
+      {
+        name: "門倉岬",
+        description: "鉄砲伝来の地",
+        tags: ["歴史", "絶景"]
+      }
+    ];
+
+    const list = document.getElementById("spot-list");
+    const search = document.getElementById("search");
+
+    let currentTag = null;
+
+    function render(data) {
+      list.innerHTML = "";
+
+      data.forEach(spot => {
+        const div = document.createElement("div");
+        div.className = "card";
+
+        div.innerHTML = `
+          <h2>${spot.name}</h2>
+          <p>${spot.description}</p>
+          <div class="tags">
+            ${spot.tags.map(tag => 
+              `<span class="tag" onclick="filterByTag('${tag}')">${tag}</span>`
+            ).join("")}
+          </div>
+        `;
+
+        list.appendChild(div);
+      });
+    }
+
+    function filterByTag(tag) {
+      currentTag = tag;
+
+      const filtered = spots.filter(spot =>
+        spot.tags.includes(tag)
+      );
+
+      render(filtered);
+    }
+
+    search.addEventListener("input", () => {
+      const keyword = search.value.toLowerCase();
+
+      let filtered = spots.filter(spot =>
+        spot.name.toLowerCase().includes(keyword) ||
+        spot.tags.some(tag => tag.includes(keyword))
+      );
+
+      if (currentTag) {
+        filtered = filtered.filter(spot =>
+          spot.tags.includes(currentTag)
+        );
+      }
+
+      render(filtered);
+    });
+
+    // 初期表示
+    render(spots);
+  </script>
+
+</body>
+</html>
