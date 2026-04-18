@@ -35,8 +35,8 @@ input, textarea {
 }
 
 button {
-  padding:12px;
-  border-radius:12px;
+  padding:10px 12px;
+  border-radius:10px;
   margin:5px;
   border:none;
   cursor:pointer;
@@ -44,17 +44,18 @@ button {
 
 .row-btn {
   display:flex;
-  gap:10px;
+  gap:8px;
   flex-wrap:wrap;
 }
 
 .tag-btn {
   display:inline-block;
-  padding:10px 14px;
-  margin:5px;
+  padding:8px 12px;
+  margin:4px;
   border-radius:20px;
   background:#e5e7eb;
   cursor:pointer;
+  font-size:13px;
 }
 
 .tag-btn.active {
@@ -62,13 +63,37 @@ button {
   color:white;
 }
 
+/* ⭐ 横カード */
 .card {
+  display:flex;
+  gap:12px;
   background:white;
-  padding:15px;
+  padding:12px;
   margin-bottom:12px;
   border-radius:12px;
+  align-items:center;
 }
 
+/* 画像 */
+.card img {
+  width:110px;
+  height:90px;
+  object-fit:cover;
+  border-radius:10px;
+  flex-shrink:0;
+}
+
+/* テキスト */
+.card-content {
+  flex:1;
+}
+
+.card h3 {
+  margin:0;
+  font-size:16px;
+}
+
+/* 折りたたみ */
 .toggle-btn {
   width:100%;
   background:#2563eb;
@@ -81,14 +106,6 @@ button {
   padding:12px;
   border-radius:12px;
   margin-bottom:15px;
-}
-
-img {
-  width:100%;
-  height:180px;
-  object-fit:cover;
-  border-radius:10px;
-  margin-bottom:8px;
 }
 </style>
 </head>
@@ -113,7 +130,7 @@ img {
   <textarea id="desc" placeholder="説明"></textarea>
 
   <input type="file" id="image" accept="image/*">
-  <img id="preview" style="display:none;">
+  <img id="preview" style="display:none; width:100%; border-radius:10px;">
 
   <button onclick="saveSpot()">保存</button>
 </div>
@@ -141,11 +158,9 @@ img {
 </div>
 
 <script>
-// ===== 定義 =====
 const AREAS=["北部","中部","南部"];
 const TYPES=["カフェ","レストラン","パン","ホテル","スーパー","ドラッグストア","コンビニ","土産","個人商店","無人販売","港","空港","レンタカー","レジャー","温泉","神社","工場","家畜","公園","海岸","星空","宇宙","博物館","絶景","猫","知人友人・親戚","その他"];
 
-// ===== 状態 =====
 let spots=JSON.parse(localStorage.getItem("spots"))||[];
 let favorites=JSON.parse(localStorage.getItem("fav"))||[];
 
@@ -154,7 +169,7 @@ let filterArea="", filterTypes=[];
 let showFavOnly=false, isAndMode=true;
 let imageData="";
 
-// ===== DOM =====
+// DOM
 const formBox=document.getElementById("formBox");
 const areaButtons=document.getElementById("area-buttons");
 const typeButtons=document.getElementById("type-buttons");
@@ -168,12 +183,12 @@ const searchInput=document.getElementById("search");
 const imageInput=document.getElementById("image");
 const preview=document.getElementById("preview");
 
-// ===== 折りたたみ =====
+// 折りたたみ
 function toggleForm(){
   formBox.style.display = formBox.style.display==="none" ? "block" : "none";
 }
 
-// ===== ボタン生成 =====
+// ボタン生成
 function createButtons(target, list, callback){
   list.forEach(item=>{
     const btn=document.createElement("span");
@@ -209,7 +224,7 @@ createButtons(filterTypeEl, TYPES, t=>{
   renderButtons(); render();
 });
 
-// ===== ボタン状態 =====
+// ボタン状態
 function renderButtons(){
   document.querySelectorAll(".tag-btn").forEach(btn=>{
     const t=btn.innerText;
@@ -222,7 +237,7 @@ function renderButtons(){
   });
 }
 
-// ===== 画像 =====
+// 画像
 imageInput.addEventListener("change", e=>{
   const file=e.target.files[0];
   if(!file) return;
@@ -236,7 +251,7 @@ imageInput.addEventListener("change", e=>{
   reader.readAsDataURL(file);
 });
 
-// ===== 保存 =====
+// 保存
 function saveSpot(){
   const name=nameInput.value.trim();
   if(!name) return alert("名前必須");
@@ -256,7 +271,7 @@ function saveSpot(){
   render();
 }
 
-// ===== 表示 =====
+// 表示
 function render(){
   const keyword=searchInput.value.toLowerCase();
   spotList.innerHTML="";
@@ -278,19 +293,26 @@ function render(){
     div.className="card";
 
     div.innerHTML=`
-      ${s.img?`<img src="${s.img}">`:""}
-      <h3>${s.name}</h3>
-      <div>${s.desc||""}</div>
-      <div>${s.tags.join(", ")}</div>
-      <button onclick="toggleFavorite('${s.name}')">
-        ${fav?"⭐":"☆"}
-      </button>
+      ${s.img ? `<img src="${s.img}">` : ""}
+
+      <div class="card-content">
+        <h3>${s.name}</h3>
+        <div style="font-size:13px; color:#444;">${s.desc||""}</div>
+        <div style="font-size:12px; color:#777;">
+          ${s.tags.join(", ")}
+        </div>
+
+        <button onclick="toggleFavorite('${s.name}')">
+          ${fav?"⭐":"☆"}
+        </button>
+      </div>
     `;
+
     spotList.appendChild(div);
   });
 }
 
-// ===== その他 =====
+// その他
 function toggleFavorite(name){
   favorites.includes(name)
     ? favorites=favorites.filter(f=>f!==name)
@@ -327,7 +349,7 @@ function clearForm(){
   renderButtons();
 }
 
-// ===== 初期化 =====
+// 初期化
 searchInput.addEventListener("input",render);
 
 renderButtons();
