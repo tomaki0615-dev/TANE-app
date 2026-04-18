@@ -5,66 +5,63 @@
 <title>種子島ガイド</title>
 
 <style>
-body {
-  font-family: -apple-system, BlinkMacSystemFont, sans-serif;
-  margin: 0;
-  background: #f2f4f7;
-}
+body { font-family:sans-serif; margin:0; background:#f2f4f7; }
 
 header {
-  background: #0f172a;
-  color: white;
-  padding: 15px;
-  text-align: center;
+  background:#0f172a;
+  color:white;
+  padding:15px;
+  text-align:center;
 }
 
 .container {
-  padding: 15px;
-  max-width: 600px;
-  margin: auto;
+  padding:15px;
+  max-width:600px;
+  margin:auto;
 }
 
 input, textarea {
-  width: 100%;
-  padding: 10px;
-  margin-bottom: 8px;
-  border-radius: 8px;
-  border: 1px solid #ccc;
+  width:100%;
+  padding:10px;
+  margin-bottom:8px;
+  border-radius:8px;
+  border:1px solid #ccc;
 }
 
 button {
-  padding: 8px 12px;
-  border: none;
-  border-radius: 8px;
-  cursor: pointer;
+  padding:8px 12px;
+  border:none;
+  border-radius:8px;
+  cursor:pointer;
 }
 
 .primary { background:#2563eb; color:white; }
 .secondary { background:#e5e7eb; }
 .danger { background:#ef4444; color:white; }
 
-/* 通知 */
-.toast {
-  position: fixed;
-  bottom: 20px;
-  left: 50%;
-  transform: translateX(-50%);
-  background: #16a34a;
-  color: white;
-  padding: 10px 20px;
-  border-radius: 20px;
-  display: none;
+/* タグボタン */
+.tag-btn {
+  display:inline-block;
+  padding:6px 10px;
+  margin:4px;
+  border-radius:20px;
+  background:#e5e7eb;
+  cursor:pointer;
+  font-size:12px;
 }
 
-/* 編集中 */
-.editing {
-  background: #fef3c7;
-  padding: 8px;
-  border-radius: 8px;
-  margin-bottom: 10px;
-  font-size: 13px;
+.tag-btn.active {
+  background:#2563eb;
+  color:white;
 }
 
+/* エリア */
+.area-btn.active { color:white; }
+.area-北部.active { background:#3b82f6; }
+.area-中部.active { background:#f59e0b; }
+.area-南部.active { background:#ef4444; }
+
+/* カード */
 .card {
   background:white;
   padding:15px;
@@ -78,24 +75,24 @@ img {
   margin-bottom:8px;
 }
 
-.tag {
-  display:inline-block;
-  padding:4px 10px;
-  margin:3px;
+/* 通知 */
+.toast {
+  position:fixed;
+  bottom:20px;
+  left:50%;
+  transform:translateX(-50%);
+  background:#16a34a;
+  color:white;
+  padding:10px 20px;
   border-radius:20px;
-  font-size:12px;
-  background:#e5e7eb;
+  display:none;
 }
 
-.area-北部 { background:#3b82f6; color:white; }
-.area-中部 { background:#f59e0b; color:white; }
-.area-南部 { background:#ef4444; color:white; }
-
-.form-box {
-  background:white;
-  padding:12px;
-  border-radius:12px;
-  margin-bottom:15px;
+.section-title {
+  font-size:13px;
+  margin-top:10px;
+  margin-bottom:5px;
+  color:#555;
 }
 </style>
 </head>
@@ -108,87 +105,149 @@ img {
 
 <input type="text" id="search" placeholder="検索...">
 
-<div id="editingLabel" class="editing" style="display:none;"></div>
+<div>
+  <div class="section-title">エリア</div>
+  <div id="area-buttons"></div>
 
-<div class="form-box">
-  <h3>➕ スポット追加 / 編集</h3>
-  <input id="name" placeholder="名前">
-  <input id="tags" placeholder="タグ（例：絶景,海,南部）">
-  <textarea id="desc" placeholder="説明"></textarea>
-
-  <input type="file" id="image" accept="image/*">
-  <img id="preview" style="display:none;">
-
-  <button class="primary" onclick="saveSpot()">保存</button>
+  <div class="section-title">種類タグ</div>
+  <div id="type-buttons"></div>
 </div>
 
-<button class="secondary" onclick="exportData()">📤 データ書き出し</button>
+<input id="name" placeholder="名前">
+<textarea id="desc" placeholder="説明"></textarea>
+
+<input type="file" id="image">
+<img id="preview" style="display:none;">
+
+<button class="primary" onclick="saveSpot()">保存</button>
+
+<button class="secondary" onclick="exportData()">📤 書き出し</button>
 
 <div id="spot-list"></div>
 
 </div>
 
-<div id="toast" class="toast">保存しました！</div>
+<div id="toast" class="toast"></div>
 
 <script>
+// ===== 定義 =====
+const AREAS = ["北部","中部","南部"];
+
+const TYPES = [
+"カフェ","レストラン","パン","ホテル","スーパー","ドラッグストア",
+"コンビニ","土産","個人商店","無人販売","港","空港","レンタカー",
+"レジャー","温泉","神社","工場","家畜","公園","海岸","星空",
+"宇宙","博物館","絶景","猫","知人友人・親戚","その他"
+];
+
+// ===== 状態 =====
 let spots = JSON.parse(localStorage.getItem("spots")) || [];
+let selectedArea = "";
+let selectedTypes = [];
 let editIndex = null;
 let imageData = "";
 
-const nameInput = document.getElementById("name");
-const tagsInput = document.getElementById("tags");
-const descInput = document.getElementById("desc");
-const imageInput = document.getElementById("image");
-const preview = document.getElementById("preview");
-const editingLabel = document.getElementById("editingLabel");
+// ===== UI生成 =====
+const areaBox = document.getElementById("area-buttons");
+const typeBox = document.getElementById("type-buttons");
 
-// ===== トースト =====
-function showToast(msg) {
-  const toast = document.getElementById("toast");
-  toast.innerText = msg;
-  toast.style.display = "block";
-  setTimeout(() => toast.style.display = "none", 1500);
+AREAS.forEach(a=>{
+  const btn = document.createElement("span");
+  btn.className = "tag-btn area-btn area-"+a;
+  btn.innerText = a;
+
+  btn.onclick = ()=>{
+    selectedArea = selectedArea === a ? "" : a;
+    renderButtons();
+  };
+
+  areaBox.appendChild(btn);
+});
+
+TYPES.forEach(t=>{
+  const btn = document.createElement("span");
+  btn.className = "tag-btn";
+  btn.innerText = t;
+
+  btn.onclick = ()=>{
+    selectedTypes.includes(t)
+      ? selectedTypes = selectedTypes.filter(x=>x!==t)
+      : selectedTypes.push(t);
+    renderButtons();
+  };
+
+  typeBox.appendChild(btn);
+});
+
+function renderButtons() {
+  document.querySelectorAll("#area-buttons .tag-btn").forEach(btn=>{
+    btn.classList.toggle("active", btn.innerText === selectedArea);
+  });
+
+  document.querySelectorAll("#type-buttons .tag-btn").forEach(btn=>{
+    btn.classList.toggle("active", selectedTypes.includes(btn.innerText));
+  });
 }
 
 // ===== 画像 =====
-imageInput.addEventListener("change", function(e) {
+image.addEventListener("change", e=>{
   const file = e.target.files[0];
-  if (!file) return;
-
   const reader = new FileReader();
-  reader.onload = function() {
+  reader.onload = ()=>{
     imageData = reader.result;
     preview.src = imageData;
-    preview.style.display = "block";
+    preview.style.display="block";
   };
   reader.readAsDataURL(file);
 });
 
 // ===== 保存 =====
-function saveAll() {
-  localStorage.setItem("spots", JSON.stringify(spots));
-}
-
 function saveSpot() {
-  const name = nameInput.value.trim();
-  const tags = tagsInput.value.split(",").map(t=>t.trim());
-  const desc = descInput.value;
+  const name = document.getElementById("name").value;
+  const desc = document.getElementById("desc").value;
 
   if (!name) return alert("名前必須");
 
-  const newData = { name, tags, desc, img: imageData };
+  const tags = [selectedArea, ...selectedTypes].filter(Boolean);
+
+  const data = { name, desc, tags, img:imageData };
 
   if (editIndex !== null) {
-    if (!imageData) newData.img = spots[editIndex].img;
-    spots[editIndex] = newData;
+    if (!imageData) data.img = spots[editIndex].img;
+    spots[editIndex] = data;
   } else {
-    spots.push(newData);
+    spots.push(data);
   }
 
-  saveAll();
+  localStorage.setItem("spots", JSON.stringify(spots));
   clearForm();
   render();
-  showToast("保存しました！");
+  toast("保存しました");
+}
+
+// ===== 表示 =====
+function render() {
+  const keyword = search.value.toLowerCase();
+  const list = document.getElementById("spot-list");
+  list.innerHTML="";
+
+  spots
+    .filter(s=>s.name.toLowerCase().includes(keyword))
+    .forEach((s,i)=>{
+      const div = document.createElement("div");
+      div.className="card";
+
+      div.innerHTML = `
+        ${s.img ? `<img src="${s.img}">` : ""}
+        <h3>${s.name}</h3>
+        <div>${s.desc||""}</div>
+        <div>${s.tags.map(t=>`<span class="tag-btn">${t}</span>`).join("")}</div>
+        <button onclick="editSpot(${i})">編集</button>
+        <button class="danger" onclick="deleteSpot(${i})">削除</button>
+      `;
+
+      list.appendChild(div);
+    });
 }
 
 // ===== 編集 =====
@@ -196,82 +255,57 @@ function editSpot(i) {
   const s = spots[i];
   editIndex = i;
 
-  nameInput.value = s.name;
-  tagsInput.value = s.tags.join(",");
-  descInput.value = s.desc;
+  name.value = s.name;
+  desc.value = s.desc;
+
+  selectedArea = AREAS.find(a=>s.tags.includes(a)) || "";
+  selectedTypes = s.tags.filter(t=>!AREAS.includes(t));
 
   imageData = s.img || "";
 
   if (s.img) {
     preview.src = s.img;
-    preview.style.display = "block";
+    preview.style.display="block";
   }
 
-  editingLabel.innerText = "✏️ 編集中: " + s.name;
-  editingLabel.style.display = "block";
+  renderButtons();
 }
 
-function deleteSpot(i) {
+// ===== 他 =====
+function deleteSpot(i){
   if (!confirm("削除する？")) return;
   spots.splice(i,1);
-  saveAll();
+  localStorage.setItem("spots", JSON.stringify(spots));
   render();
-  showToast("削除しました");
 }
 
-function clearForm() {
-  nameInput.value="";
-  tagsInput.value="";
-  descInput.value="";
-  imageInput.value="";
+function clearForm(){
+  name.value="";
+  desc.value="";
+  selectedArea="";
+  selectedTypes=[];
+  image.value="";
   preview.style.display="none";
   imageData="";
   editIndex=null;
-
-  editingLabel.style.display = "none";
+  renderButtons();
 }
 
-// ===== 表示 =====
-function render() {
-  const keyword = search.value.toLowerCase();
-  const list = document.getElementById("spot-list");
-  list.innerHTML = "";
-
-  spots
-    .filter(s=>s.name.toLowerCase().includes(keyword))
-    .forEach((s,i)=>{
-      const div = document.createElement("div");
-      div.className = "card";
-
-      div.innerHTML = `
-        ${s.img ? `<img src="${s.img}">` : ""}
-        <h2>${s.name}</h2>
-        <div>${s.desc || ""}</div>
-
-        <div>
-          ${s.tags.map(t=>{
-            const cls = ["北部","中部","南部"].includes(t) ? "area-"+t : "";
-            return `<span class="tag ${cls}">${t}</span>`;
-          }).join("")}
-        </div>
-
-        <button onclick="editSpot(${i})">✏️ 編集</button>
-        <button class="danger" onclick="deleteSpot(${i})">🗑 削除</button>
-      `;
-
-      list.appendChild(div);
-    });
+function exportData(){
+  navigator.clipboard.writeText(JSON.stringify(spots,null,2));
+  toast("コピーしました");
 }
 
-// ===== エクスポート =====
-function exportData() {
-  const text = JSON.stringify(spots,null,2);
-  navigator.clipboard.writeText(text);
-  showToast("コピーしました");
+function toast(msg){
+  const t = document.getElementById("toast");
+  t.innerText=msg;
+  t.style.display="block";
+  setTimeout(()=>t.style.display="none",1500);
 }
 
 search.addEventListener("input", render);
 
+renderButtons();
 render();
 </script>
 
