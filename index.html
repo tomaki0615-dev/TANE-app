@@ -167,13 +167,13 @@ const TYPES=[
 ];
 
 /* =========================
-   DOM（重要：バグ修正済み）
+   DOM
 ========================= */
-const nameEl = document.getElementById("name");
-const descEl = document.getElementById("desc");
-const searchEl = document.getElementById("search");
-const imageEl = document.getElementById("image");
-const previewEl = document.getElementById("preview");
+const nameEl=document.getElementById("name");
+const descEl=document.getElementById("desc");
+const searchEl=document.getElementById("search");
+const imageEl=document.getElementById("image");
+const previewEl=document.getElementById("preview");
 
 /* =========================
    状態
@@ -198,7 +198,7 @@ let state = {
 };
 
 /* =========================
-   旧データ互換
+   旧データ修復
 ========================= */
 state.spots = state.spots.map(s=>{
   if(Array.isArray(s.tags)){
@@ -212,16 +212,6 @@ state.spots = state.spots.map(s=>{
   }
   return s;
 });
-
-/* =========================
-   DOM取得
-========================= */
-const areaButtons=document.getElementById("area-buttons");
-const typeButtons=document.getElementById("type-buttons");
-const filterAreaEl=document.getElementById("filter-area");
-const filterTypeEl=document.getElementById("filter-type");
-const spotList=document.getElementById("spot-list");
-const formBox=document.getElementById("formBox");
 
 /* =========================
    初期化
@@ -255,13 +245,13 @@ function toggleForm(){
 }
 
 /* =========================
-   ボタン生成
+   ボタン
 ========================= */
 function createButtons(){
-  make(areaButtons,AREAS,"area");
-  make(typeButtons,TYPES,"type");
-  make(filterAreaEl,AREAS,"filterArea");
-  make(filterTypeEl,TYPES,"filterType");
+  make(area-buttons,AREAS,"area");
+  make(type-buttons,TYPES,"type");
+  make(filter-area,AREAS,"filterArea");
+  make(filter-type,TYPES,"filterType");
 }
 
 function make(target,list,mode){
@@ -319,7 +309,7 @@ function handleImage(e){
 }
 
 /* =========================
-   保存（完全修正版）
+   保存
 ========================= */
 function saveSpot(){
   if(!nameEl.value.trim()) return alert("名前必須");
@@ -339,6 +329,17 @@ function saveSpot(){
 }
 
 /* =========================
+   安全取得関数（AND/OR崩壊防止）
+========================= */
+function getTypes(s){
+  return Array.isArray(s.tags?.types) ? s.tags.types : [];
+}
+
+function getArea(s){
+  return s.tags?.area || "";
+}
+
+/* =========================
    フィルター
 ========================= */
 function filterData(){
@@ -349,14 +350,19 @@ function filterData(){
     if(!s.name.toLowerCase().includes(k)) return false;
 
     if(state.filter.area &&
-      s.tags.area!==state.filter.area) return false;
+      getArea(s)!==state.filter.area) return false;
+
+    const types=getTypes(s);
 
     if(state.filter.types.length){
-      if(state.filter.mode==="AND" &&
-        !state.filter.types.every(t=>s.tags.types.includes(t))) return false;
 
-      if(state.filter.mode==="OR" &&
-        !state.filter.types.some(t=>s.tags.types.includes(t))) return false;
+      if(state.filter.mode==="AND"){
+        if(!state.filter.types.every(t=>types.includes(t))) return false;
+      }
+
+      if(state.filter.mode==="OR"){
+        if(!state.filter.types.some(t=>types.includes(t))) return false;
+      }
     }
 
     if(state.filter.favOnly &&
@@ -406,8 +412,8 @@ function render(){
         <h3>${s.name}</h3>
         <div>${s.desc||""}</div>
         <div style="font-size:12px;color:#666;">
-          ${s.tags.area ? `📍${s.tags.area} ` : ""}
-          ${(s.tags.types||[]).join(", ")}
+          ${getArea(s)}
+          ${(getTypes(s)).join(", ")}
         </div>
         <button onclick="toggleFavorite('${s.name}')">
           ${fav?"⭐":"☆"}
