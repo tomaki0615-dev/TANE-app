@@ -20,10 +20,10 @@ header {
   margin:auto;
 }
 
-input, textarea {
+input {
   width:100%;
   padding:10px;
-  margin-bottom:8px;
+  margin-bottom:10px;
   border-radius:8px;
   border:1px solid #ccc;
 }
@@ -32,14 +32,10 @@ button {
   padding:8px 12px;
   border:none;
   border-radius:8px;
+  margin:4px;
   cursor:pointer;
 }
 
-.primary { background:#2563eb; color:white; }
-.secondary { background:#e5e7eb; }
-.danger { background:#ef4444; color:white; }
-
-/* タグボタン */
 .tag-btn {
   display:inline-block;
   padding:6px 10px;
@@ -55,44 +51,11 @@ button {
   color:white;
 }
 
-/* エリア */
-.area-btn.active { color:white; }
-.area-北部.active { background:#3b82f6; }
-.area-中部.active { background:#f59e0b; }
-.area-南部.active { background:#ef4444; }
-
-/* カード */
 .card {
   background:white;
   padding:15px;
   margin-bottom:12px;
   border-radius:12px;
-}
-
-img {
-  width:100%;
-  border-radius:10px;
-  margin-bottom:8px;
-}
-
-/* 通知 */
-.toast {
-  position:fixed;
-  bottom:20px;
-  left:50%;
-  transform:translateX(-50%);
-  background:#16a34a;
-  color:white;
-  padding:10px 20px;
-  border-radius:20px;
-  display:none;
-}
-
-.section-title {
-  font-size:13px;
-  margin-top:10px;
-  margin-bottom:5px;
-  color:#555;
 }
 </style>
 </head>
@@ -103,208 +66,154 @@ img {
 
 <div class="container">
 
+<!-- 検索 -->
 <input type="text" id="search" placeholder="検索...">
 
+<!-- フィルター -->
 <div>
-  <div class="section-title">エリア</div>
-  <div id="area-buttons"></div>
+  <div>エリア</div>
+  <div id="filter-area"></div>
 
-  <div class="section-title">種類タグ</div>
-  <div id="type-buttons"></div>
+  <div>種類タグ</div>
+  <div id="filter-type"></div>
+
+  <button onclick="toggleFavFilter()">⭐ お気に入りだけ</button>
+  <button onclick="toggleMode()">AND / OR 切替</button>
 </div>
 
-<input id="name" placeholder="名前">
-<textarea id="desc" placeholder="説明"></textarea>
-
-<input type="file" id="image">
-<img id="preview" style="display:none;">
-
-<button class="primary" onclick="saveSpot()">保存</button>
-
-<button class="secondary" onclick="exportData()">📤 書き出し</button>
+<hr>
 
 <div id="spot-list"></div>
 
 </div>
 
-<div id="toast" class="toast"></div>
-
 <script>
 // ===== 定義 =====
 const AREAS = ["北部","中部","南部"];
-
-const TYPES = [
-"カフェ","レストラン","パン","ホテル","スーパー","ドラッグストア",
-"コンビニ","土産","個人商店","無人販売","港","空港","レンタカー",
-"レジャー","温泉","神社","工場","家畜","公園","海岸","星空",
-"宇宙","博物館","絶景","猫","知人友人・親戚","その他"
-];
+const TYPES = ["カフェ","レストラン","パン","ホテル","スーパー","ドラッグストア","コンビニ","土産","個人商店","無人販売","港","空港","レンタカー","レジャー","温泉","神社","工場","家畜","公園","海岸","星空","宇宙","博物館","絶景","猫","知人友人・親戚","その他"];
 
 // ===== 状態 =====
 let spots = JSON.parse(localStorage.getItem("spots")) || [];
-let selectedArea = "";
-let selectedTypes = [];
-let editIndex = null;
-let imageData = "";
+let favorites = JSON.parse(localStorage.getItem("fav")) || [];
+
+let filterArea = "";
+let filterTypes = [];
+let showFavOnly = false;
+let isAndMode = true;
 
 // ===== UI生成 =====
-const areaBox = document.getElementById("area-buttons");
-const typeBox = document.getElementById("type-buttons");
+const areaBox = document.getElementById("filter-area");
+const typeBox = document.getElementById("filter-type");
 
 AREAS.forEach(a=>{
-  const btn = document.createElement("span");
-  btn.className = "tag-btn area-btn area-"+a;
-  btn.innerText = a;
+  const btn=document.createElement("span");
+  btn.className="tag-btn";
+  btn.innerText=a;
 
-  btn.onclick = ()=>{
-    selectedArea = selectedArea === a ? "" : a;
+  btn.onclick=()=>{
+    filterArea = filterArea===a ? "" : a;
     renderButtons();
+    render();
   };
 
   areaBox.appendChild(btn);
 });
 
 TYPES.forEach(t=>{
-  const btn = document.createElement("span");
-  btn.className = "tag-btn";
-  btn.innerText = t;
+  const btn=document.createElement("span");
+  btn.className="tag-btn";
+  btn.innerText=t;
 
-  btn.onclick = ()=>{
-    selectedTypes.includes(t)
-      ? selectedTypes = selectedTypes.filter(x=>x!==t)
-      : selectedTypes.push(t);
+  btn.onclick=()=>{
+    filterTypes.includes(t)
+      ? filterTypes=filterTypes.filter(x=>x!==t)
+      : filterTypes.push(t);
+
     renderButtons();
+    render();
   };
 
   typeBox.appendChild(btn);
 });
 
-function renderButtons() {
-  document.querySelectorAll("#area-buttons .tag-btn").forEach(btn=>{
-    btn.classList.toggle("active", btn.innerText === selectedArea);
-  });
+function renderButtons(){
+  document.querySelectorAll("#filter-area .tag-btn")
+    .forEach(btn=>btn.classList.toggle("active",btn.innerText===filterArea));
 
-  document.querySelectorAll("#type-buttons .tag-btn").forEach(btn=>{
-    btn.classList.toggle("active", selectedTypes.includes(btn.innerText));
-  });
+  document.querySelectorAll("#filter-type .tag-btn")
+    .forEach(btn=>btn.classList.toggle("active",filterTypes.includes(btn.innerText)));
 }
 
-// ===== 画像 =====
-image.addEventListener("change", e=>{
-  const file = e.target.files[0];
-  const reader = new FileReader();
-  reader.onload = ()=>{
-    imageData = reader.result;
-    preview.src = imageData;
-    preview.style.display="block";
-  };
-  reader.readAsDataURL(file);
-});
-
-// ===== 保存 =====
-function saveSpot() {
-  const name = document.getElementById("name").value;
-  const desc = document.getElementById("desc").value;
-
-  if (!name) return alert("名前必須");
-
-  const tags = [selectedArea, ...selectedTypes].filter(Boolean);
-
-  const data = { name, desc, tags, img:imageData };
-
-  if (editIndex !== null) {
-    if (!imageData) data.img = spots[editIndex].img;
-    spots[editIndex] = data;
-  } else {
-    spots.push(data);
-  }
-
-  localStorage.setItem("spots", JSON.stringify(spots));
-  clearForm();
+// ===== トグル =====
+function toggleFavFilter(){
+  showFavOnly=!showFavOnly;
   render();
-  toast("保存しました");
+}
+
+function toggleMode(){
+  isAndMode=!isAndMode;
+  alert(isAndMode ? "AND検索" : "OR検索");
+  render();
 }
 
 // ===== 表示 =====
-function render() {
+function render(){
   const keyword = search.value.toLowerCase();
   const list = document.getElementById("spot-list");
   list.innerHTML="";
 
   spots
-    .filter(s=>s.name.toLowerCase().includes(keyword))
+    .filter(s=>{
+      // 検索
+      if (!s.name.toLowerCase().includes(keyword)) return false;
+
+      // エリア
+      if (filterArea && !s.tags.includes(filterArea)) return false;
+
+      // お気に入り
+      if (showFavOnly && !favorites.includes(s.name)) return false;
+
+      // タグ
+      if (filterTypes.length){
+        if (isAndMode){
+          if (!filterTypes.every(t=>s.tags.includes(t))) return false;
+        } else {
+          if (!filterTypes.some(t=>s.tags.includes(t))) return false;
+        }
+      }
+
+      return true;
+    })
     .forEach((s,i)=>{
-      const div = document.createElement("div");
+      const fav = favorites.includes(s.name);
+
+      const div=document.createElement("div");
       div.className="card";
 
-      div.innerHTML = `
-        ${s.img ? `<img src="${s.img}">` : ""}
+      div.innerHTML=`
         <h3>${s.name}</h3>
-        <div>${s.desc||""}</div>
-        <div>${s.tags.map(t=>`<span class="tag-btn">${t}</span>`).join("")}</div>
-        <button onclick="editSpot(${i})">編集</button>
-        <button class="danger" onclick="deleteSpot(${i})">削除</button>
+        <div>${s.tags.join(", ")}</div>
+
+        <button onclick="toggleFavorite('${s.name}')">
+          ${fav?"⭐":"☆"}
+        </button>
       `;
 
       list.appendChild(div);
     });
 }
 
-// ===== 編集 =====
-function editSpot(i) {
-  const s = spots[i];
-  editIndex = i;
+// ===== お気に入り =====
+function toggleFavorite(name){
+  favorites.includes(name)
+    ? favorites=favorites.filter(f=>f!==name)
+    : favorites.push(name);
 
-  name.value = s.name;
-  desc.value = s.desc;
-
-  selectedArea = AREAS.find(a=>s.tags.includes(a)) || "";
-  selectedTypes = s.tags.filter(t=>!AREAS.includes(t));
-
-  imageData = s.img || "";
-
-  if (s.img) {
-    preview.src = s.img;
-    preview.style.display="block";
-  }
-
-  renderButtons();
-}
-
-// ===== 他 =====
-function deleteSpot(i){
-  if (!confirm("削除する？")) return;
-  spots.splice(i,1);
-  localStorage.setItem("spots", JSON.stringify(spots));
+  localStorage.setItem("fav",JSON.stringify(favorites));
   render();
 }
 
-function clearForm(){
-  name.value="";
-  desc.value="";
-  selectedArea="";
-  selectedTypes=[];
-  image.value="";
-  preview.style.display="none";
-  imageData="";
-  editIndex=null;
-  renderButtons();
-}
-
-function exportData(){
-  navigator.clipboard.writeText(JSON.stringify(spots,null,2));
-  toast("コピーしました");
-}
-
-function toast(msg){
-  const t = document.getElementById("toast");
-  t.innerText=msg;
-  t.style.display="block";
-  setTimeout(()=>t.style.display="none",1500);
-}
-
-search.addEventListener("input", render);
-
+// 初期化
 renderButtons();
 render();
 </script>
