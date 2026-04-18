@@ -2,8 +2,6 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-
-<!-- ⭐ これ超重要 -->
 <meta name="viewport" content="width=device-width, initial-scale=1">
 
 <title>種子島ガイド</title>
@@ -34,7 +32,7 @@ header {
 
 /* コンテンツ */
 .container {
-  padding:70px 10px 80px;
+  padding:70px 10px 90px;
 }
 
 /* 入力 */
@@ -56,20 +54,28 @@ button {
   font-size:16px;
 }
 
-/* 下バー */
-.bottom-bar {
-  position:fixed;
-  bottom:0;
-  width:100%;
-  background:white;
-  border-top:1px solid #ddd;
+/* 横ボタン */
+.row-btn {
   display:flex;
+  gap:8px;
 }
 
-.bottom-bar button {
+.row-btn button {
   flex:1;
-  background:none;
-  font-weight:bold;
+}
+
+/* タグ */
+.tag-btn {
+  padding:8px 12px;
+  margin:4px;
+  border-radius:20px;
+  background:#eee;
+  display:inline-block;
+}
+
+.tag-btn.active {
+  background:#3b82f6;
+  color:white;
 }
 
 /* カード */
@@ -95,22 +101,35 @@ button {
   font-size:18px;
 }
 
-.card-content div {
-  font-size:14px;
-}
-
-/* タグ */
-.tag-btn {
-  padding:8px 12px;
-  margin:4px;
-  border-radius:20px;
-  background:#eee;
-  display:inline-block;
-}
-
-.tag-btn.active {
+/* 折りたたみ */
+.toggle-btn {
+  width:100%;
   background:#3b82f6;
   color:white;
+}
+
+.form-box {
+  display:none;
+  background:white;
+  padding:12px;
+  border-radius:12px;
+  margin-bottom:15px;
+}
+
+/* 下バー */
+.bottom-bar {
+  position:fixed;
+  bottom:0;
+  width:100%;
+  background:white;
+  border-top:1px solid #ddd;
+  display:flex;
+}
+
+.bottom-bar button {
+  flex:1;
+  background:none;
+  font-weight:bold;
 }
 </style>
 </head>
@@ -121,72 +140,127 @@ button {
 
 <div class="container">
 
+<button class="toggle-btn" onclick="toggleForm()">➕ スポット追加</button>
+
+<div id="formBox" class="form-box">
+  <div id="area-buttons"></div>
+  <div id="type-buttons"></div>
+
+  <input id="name" placeholder="名前">
+  <textarea id="desc" placeholder="説明"></textarea>
+
+  <input type="file" id="image">
+  <img id="preview" style="display:none; width:100%;">
+
+  <button onclick="saveSpot()">保存</button>
+</div>
+
 <input id="search" placeholder="検索">
+
+<div class="row-btn">
+  <button onclick="toggleFav()">⭐</button>
+  <button onclick="toggleMode()">AND/OR</button>
+</div>
+
+<div id="filter-area"></div>
+<div id="filter-type"></div>
 
 <div id="spot-list"></div>
 
 </div>
 
-<!-- 下タブ -->
 <div class="bottom-bar">
-  <button onclick="toggleFav()">⭐</button>
   <button onclick="exportData()">📤</button>
 </div>
 
 <script>
+const AREAS=["北部","中部","南部"];
+const TYPES=["カフェ","レストラン","温泉","海岸","絶景","その他"];
+
 let spots=JSON.parse(localStorage.getItem("spots"))||[];
 let favorites=JSON.parse(localStorage.getItem("fav"))||[];
-let showFav=false;
+
+let selectedArea="", selectedTypes=[];
+let filterArea="", filterTypes=[];
+let showFav=false, isAnd=true;
+let imageData="";
+
+const areaEl=document.getElementById("area-buttons");
+const typeEl=document.getElementById("type-buttons");
+const fArea=document.getElementById("filter-area");
+const fType=document.getElementById("filter-type");
+
+function createButtons(target,list,cb){
+  list.forEach(i=>{
+    const b=document.createElement("span");
+    b.className="tag-btn";
+    b.innerText=i;
+    b.onclick=()=>cb(i);
+    target.appendChild(b);
+  });
+}
+
+createButtons(areaEl,AREAS,a=>{selectedArea=a});
+createButtons(typeEl,TYPES,t=>{selectedTypes.push(t)});
+createButtons(fArea,AREAS,a=>{filterArea=a;render()});
+createButtons(fType,TYPES,t=>{filterTypes.push(t);render()});
+
+function toggleForm(){
+  formBox.style.display=formBox.style.display==="none"?"block":"none";
+}
+
+image.onchange=e=>{
+  const f=e.target.files[0];
+  const r=new FileReader();
+  r.onload=()=>{imageData=r.result;preview.src=r.result;preview.style.display="block";}
+  r.readAsDataURL(f);
+}
+
+function saveSpot(){
+  spots.push({
+    name:name.value,
+    desc:desc.value,
+    tags:[selectedArea,...selectedTypes],
+    img:imageData
+  });
+  localStorage.setItem("spots",JSON.stringify(spots));
+  render();
+}
 
 function render(){
-  const keyword=search.value.toLowerCase();
   spot-list.innerHTML="";
+  spots.forEach(s=>{
+    if(showFav && !favorites.includes(s.name)) return;
 
-  spots.filter(s=>{
-    if(!s.name.toLowerCase().includes(keyword)) return false;
-    if(showFav && !favorites.includes(s.name)) return false;
-    return true;
-  }).forEach(s=>{
-    const fav=favorites.includes(s.name);
-
-    const div=document.createElement("div");
-    div.className="card";
-
-    div.innerHTML=`
+    const d=document.createElement("div");
+    d.className="card";
+    d.innerHTML=`
       ${s.img?`<img src="${s.img}">`:""}
       <div class="card-content">
         <h3>${s.name}</h3>
         <div>${s.desc||""}</div>
-        <button onclick="toggleFavorite('${s.name}')">
-          ${fav?"⭐":"☆"}
-        </button>
-      </div>
-    `;
-
-    document.getElementById("spot-list").appendChild(div);
+        <button onclick="fav('${s.name}')">${favorites.includes(s.name)?"⭐":"☆"}</button>
+      </div>`;
+    document.getElementById("spot-list").appendChild(d);
   });
 }
 
-function toggleFavorite(name){
-  favorites.includes(name)
-    ? favorites=favorites.filter(f=>f!==name)
-    : favorites.push(name);
-
+function fav(n){
+  favorites.includes(n)
+  ? favorites=favorites.filter(x=>x!==n)
+  : favorites.push(n);
   localStorage.setItem("fav",JSON.stringify(favorites));
   render();
 }
 
-function toggleFav(){
-  showFav=!showFav;
-  render();
-}
-
+function toggleFav(){showFav=!showFav;render();}
+function toggleMode(){isAnd=!isAnd;}
 function exportData(){
-  navigator.clipboard.writeText(JSON.stringify(spots,null,2));
+  navigator.clipboard.writeText(JSON.stringify(spots));
   alert("コピーしたよ");
 }
 
-search.addEventListener("input",render);
+search.oninput=render;
 render();
 </script>
 
