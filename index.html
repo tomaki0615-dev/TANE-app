@@ -9,7 +9,7 @@
 <link rel="apple-touch-icon" href="icon.png">
 
 <style>
-body {
+body{
   font-family:-apple-system, BlinkMacSystemFont;
   margin:0;
   background:#f9fafb;
@@ -17,7 +17,7 @@ body {
 }
 
 /* ヘッダー */
-header {
+header{
   position:fixed;
   top:0;
   width:100%;
@@ -31,12 +31,12 @@ header {
 }
 
 /* コンテンツ */
-.container {
-  padding:70px 10px 90px;
+.container{
+  padding:80px 10px 20px;
 }
 
 /* 入力 */
-input, textarea {
+input, textarea{
   width:100%;
   padding:14px;
   border-radius:12px;
@@ -46,40 +46,39 @@ input, textarea {
 }
 
 /* ボタン */
-button {
+button{
   padding:14px;
-  border-radius:14px;
+  border-radius:12px;
   border:none;
   background:#e5e7eb;
   font-size:16px;
 }
 
-/* 横ボタン */
-.row-btn {
+.row-btn{
   display:flex;
   gap:8px;
 }
 
-.row-btn button {
+.row-btn button{
   flex:1;
 }
 
 /* タグ */
-.tag-btn {
-  padding:8px 12px;
+.tag-btn{
+  padding:10px 14px;
   margin:4px;
   border-radius:20px;
   background:#eee;
   display:inline-block;
 }
 
-.tag-btn.active {
+.tag-btn.active{
   background:#3b82f6;
   color:white;
 }
 
 /* カード */
-.card {
+.card{
   display:flex;
   gap:10px;
   background:white;
@@ -89,47 +88,35 @@ button {
   box-shadow:0 2px 6px rgba(0,0,0,0.05);
 }
 
-.card img {
+.card img{
   width:100px;
   height:80px;
   object-fit:cover;
   border-radius:10px;
 }
 
-.card-content h3 {
+.card-content{
+  flex:1;
+}
+
+.card h3{
   margin:0;
   font-size:18px;
 }
 
 /* 折りたたみ */
-.toggle-btn {
+.toggle-btn{
   width:100%;
   background:#3b82f6;
   color:white;
 }
 
-.form-box {
+.form-box{
   display:none;
   background:white;
   padding:12px;
   border-radius:12px;
   margin-bottom:15px;
-}
-
-/* 下バー */
-.bottom-bar {
-  position:fixed;
-  bottom:0;
-  width:100%;
-  background:white;
-  border-top:1px solid #ddd;
-  display:flex;
-}
-
-.bottom-bar button {
-  flex:1;
-  background:none;
-  font-weight:bold;
 }
 </style>
 </head>
@@ -143,14 +130,17 @@ button {
 <button class="toggle-btn" onclick="toggleForm()">➕ スポット追加</button>
 
 <div id="formBox" class="form-box">
+  <div>エリア</div>
   <div id="area-buttons"></div>
+
+  <div>種類タグ</div>
   <div id="type-buttons"></div>
 
   <input id="name" placeholder="名前">
   <textarea id="desc" placeholder="説明"></textarea>
 
   <input type="file" id="image">
-  <img id="preview" style="display:none; width:100%;">
+  <img id="preview" style="display:none; width:100%; border-radius:10px;">
 
   <button onclick="saveSpot()">保存</button>
 </div>
@@ -158,19 +148,21 @@ button {
 <input id="search" placeholder="検索">
 
 <div class="row-btn">
-  <button onclick="toggleFav()">⭐</button>
+  <button onclick="toggleFavFilter()">⭐</button>
   <button onclick="toggleMode()">AND/OR</button>
+  <button onclick="exportData()">📤</button>
 </div>
 
-<div id="filter-area"></div>
-<div id="filter-type"></div>
+<div>
+  <div>エリア</div>
+  <div id="filter-area"></div>
+
+  <div>種類タグ</div>
+  <div id="filter-type"></div>
+</div>
 
 <div id="spot-list"></div>
 
-</div>
-
-<div class="bottom-bar">
-  <button onclick="exportData()">📤</button>
 </div>
 
 <script>
@@ -182,85 +174,160 @@ let favorites=JSON.parse(localStorage.getItem("fav"))||[];
 
 let selectedArea="", selectedTypes=[];
 let filterArea="", filterTypes=[];
-let showFav=false, isAnd=true;
+let showFavOnly=false, isAndMode=true;
 let imageData="";
 
-const areaEl=document.getElementById("area-buttons");
-const typeEl=document.getElementById("type-buttons");
-const fArea=document.getElementById("filter-area");
-const fType=document.getElementById("filter-type");
+const areaButtons=document.getElementById("area-buttons");
+const typeButtons=document.getElementById("type-buttons");
+const filterAreaEl=document.getElementById("filter-area");
+const filterTypeEl=document.getElementById("filter-type");
+const spotList=document.getElementById("spot-list");
 
-function createButtons(target,list,cb){
-  list.forEach(i=>{
-    const b=document.createElement("span");
-    b.className="tag-btn";
-    b.innerText=i;
-    b.onclick=()=>cb(i);
-    target.appendChild(b);
-  });
-}
-
-createButtons(areaEl,AREAS,a=>{selectedArea=a});
-createButtons(typeEl,TYPES,t=>{selectedTypes.push(t)});
-createButtons(fArea,AREAS,a=>{filterArea=a;render()});
-createButtons(fType,TYPES,t=>{filterTypes.push(t);render()});
-
+// 折りたたみ
 function toggleForm(){
   formBox.style.display=formBox.style.display==="none"?"block":"none";
 }
 
-image.onchange=e=>{
-  const f=e.target.files[0];
-  const r=new FileReader();
-  r.onload=()=>{imageData=r.result;preview.src=r.result;preview.style.display="block";}
-  r.readAsDataURL(f);
+// ボタン生成
+function createButtons(target,list,cb){
+  list.forEach(item=>{
+    const b=document.createElement("span");
+    b.className="tag-btn";
+    b.innerText=item;
+    b.onclick=()=>cb(item);
+    target.appendChild(b);
+  });
 }
 
+createButtons(areaButtons,AREAS,a=>{
+  selectedArea = selectedArea===a?"":a;
+  renderButtons();
+});
+
+createButtons(typeButtons,TYPES,t=>{
+  selectedTypes.includes(t)
+    ? selectedTypes=selectedTypes.filter(x=>x!==t)
+    : selectedTypes.push(t);
+  renderButtons();
+});
+
+createButtons(filterAreaEl,AREAS,a=>{
+  filterArea = filterArea===a?"":a;
+  renderButtons(); render();
+});
+
+createButtons(filterTypeEl,TYPES,t=>{
+  filterTypes.includes(t)
+    ? filterTypes=filterTypes.filter(x=>x!==t)
+    : filterTypes.push(t);
+  renderButtons(); render();
+});
+
+function renderButtons(){
+  document.querySelectorAll(".tag-btn").forEach(btn=>{
+    const t=btn.innerText;
+    btn.classList.toggle("active",
+      t===selectedArea ||
+      selectedTypes.includes(t) ||
+      t===filterArea ||
+      filterTypes.includes(t)
+    );
+  });
+}
+
+// 画像
+image.onchange=e=>{
+  const f=e.target.files[0];
+  if(!f) return;
+  const r=new FileReader();
+  r.onload=()=>{
+    imageData=r.result;
+    preview.src=r.result;
+    preview.style.display="block";
+  };
+  r.readAsDataURL(f);
+};
+
+// 保存
 function saveSpot(){
+  if(!name.value.trim()) return alert("名前必須");
+
   spots.push({
     name:name.value,
     desc:desc.value,
-    tags:[selectedArea,...selectedTypes],
+    tags:[selectedArea,...selectedTypes].filter(Boolean),
     img:imageData
   });
+
   localStorage.setItem("spots",JSON.stringify(spots));
   render();
 }
 
+// 表示
 function render(){
-  spot-list.innerHTML="";
-  spots.forEach(s=>{
-    if(showFav && !favorites.includes(s.name)) return;
+  const keyword=search.value.toLowerCase();
+  spotList.innerHTML="";
+
+  spots.filter(s=>{
+    if(!s.name.toLowerCase().includes(keyword)) return false;
+    if(filterArea && !s.tags.includes(filterArea)) return false;
+    if(showFavOnly && !favorites.includes(s.name)) return false;
+
+    if(filterTypes.length){
+      if(isAndMode && !filterTypes.every(t=>s.tags.includes(t))) return false;
+      if(!isAndMode && !filterTypes.some(t=>s.tags.includes(t))) return false;
+    }
+    return true;
+  }).forEach(s=>{
+    const fav=favorites.includes(s.name);
 
     const d=document.createElement("div");
     d.className="card";
+
     d.innerHTML=`
       ${s.img?`<img src="${s.img}">`:""}
       <div class="card-content">
         <h3>${s.name}</h3>
         <div>${s.desc||""}</div>
-        <button onclick="fav('${s.name}')">${favorites.includes(s.name)?"⭐":"☆"}</button>
-      </div>`;
-    document.getElementById("spot-list").appendChild(d);
+        <div style="font-size:12px;color:#666;">${s.tags.join(", ")}</div>
+        <button onclick="toggleFavorite('${s.name}')">
+          ${fav?"⭐":"☆"}
+        </button>
+      </div>
+    `;
+
+    spotList.appendChild(d);
   });
 }
 
-function fav(n){
-  favorites.includes(n)
-  ? favorites=favorites.filter(x=>x!==n)
-  : favorites.push(n);
+// その他
+function toggleFavorite(name){
+  favorites.includes(name)
+    ? favorites=favorites.filter(f=>f!==name)
+    : favorites.push(name);
+
   localStorage.setItem("fav",JSON.stringify(favorites));
   render();
 }
 
-function toggleFav(){showFav=!showFav;render();}
-function toggleMode(){isAnd=!isAnd;}
+function toggleFavFilter(){
+  showFavOnly=!showFavOnly;
+  render();
+}
+
+function toggleMode(){
+  isAndMode=!isAndMode;
+  alert(isAndMode?"AND検索":"OR検索");
+}
+
 function exportData(){
-  navigator.clipboard.writeText(JSON.stringify(spots));
+  navigator.clipboard.writeText(JSON.stringify(spots,null,2));
   alert("コピーしたよ");
 }
 
 search.oninput=render;
+
+renderButtons();
 render();
 </script>
 
