@@ -10,8 +10,9 @@ body { font-family:sans-serif; margin:0; background:#f2f4f7; }
 header {
   background:#0f172a;
   color:white;
-  padding:15px;
+  padding:18px;
   text-align:center;
+  font-size:18px;
 }
 
 .container {
@@ -20,30 +21,35 @@ header {
   margin:auto;
 }
 
-input {
+/* 入力 */
+input, textarea {
   width:100%;
-  padding:10px;
+  padding:12px;
   margin-bottom:10px;
-  border-radius:8px;
+  border-radius:10px;
   border:1px solid #ccc;
+  font-size:16px;
 }
 
+/* ボタン全体強化 */
 button {
-  padding:8px 12px;
+  padding:12px 16px;
+  font-size:15px;
   border:none;
-  border-radius:8px;
-  margin:4px;
+  border-radius:12px;
+  margin:6px 4px;
   cursor:pointer;
 }
 
+/* タグボタン */
 .tag-btn {
   display:inline-block;
-  padding:6px 10px;
-  margin:4px;
+  padding:10px 14px;
+  margin:5px;
   border-radius:20px;
   background:#e5e7eb;
   cursor:pointer;
-  font-size:12px;
+  font-size:14px;
 }
 
 .tag-btn.active {
@@ -51,11 +57,28 @@ button {
   color:white;
 }
 
+/* カード */
 .card {
   background:white;
-  padding:15px;
-  margin-bottom:12px;
+  padding:18px;
+  margin-bottom:14px;
+  border-radius:14px;
+}
+
+/* 折りたたみ */
+.toggle-btn {
+  width:100%;
+  background:#2563eb;
+  color:white;
+}
+
+/* フォーム */
+.form-box {
+  display:none;
+  background:white;
+  padding:12px;
   border-radius:12px;
+  margin-bottom:15px;
 }
 </style>
 </head>
@@ -66,10 +89,27 @@ button {
 
 <div class="container">
 
+<!-- 追加フォーム -->
+<button class="toggle-btn" onclick="toggleForm()">➕ スポット追加</button>
+
+<div id="formBox" class="form-box">
+
+  <div>エリア</div>
+  <div id="area-buttons"></div>
+
+  <div>種類タグ</div>
+  <div id="type-buttons"></div>
+
+  <input id="name" placeholder="名前">
+  <textarea id="desc" placeholder="説明"></textarea>
+
+  <button onclick="saveSpot()">保存</button>
+
+</div>
+
 <!-- 検索 -->
 <input type="text" id="search" placeholder="検索...">
 
-<!-- フィルター -->
 <div>
   <div>エリア</div>
   <div id="filter-area"></div>
@@ -88,122 +128,127 @@ button {
 </div>
 
 <script>
-// ===== 定義 =====
-const AREAS = ["北部","中部","南部"];
-const TYPES = ["カフェ","レストラン","パン","ホテル","スーパー","ドラッグストア","コンビニ","土産","個人商店","無人販売","港","空港","レンタカー","レジャー","温泉","神社","工場","家畜","公園","海岸","星空","宇宙","博物館","絶景","猫","知人友人・親戚","その他"];
+const AREAS=["北部","中部","南部"];
+const TYPES=["カフェ","レストラン","パン","ホテル","スーパー","ドラッグストア","コンビニ","土産","個人商店","無人販売","港","空港","レンタカー","レジャー","温泉","神社","工場","家畜","公園","海岸","星空","宇宙","博物館","絶景","猫","知人友人・親戚","その他"];
 
-// ===== 状態 =====
-let spots = JSON.parse(localStorage.getItem("spots")) || [];
-let favorites = JSON.parse(localStorage.getItem("fav")) || [];
+let spots=JSON.parse(localStorage.getItem("spots"))||[];
+let favorites=JSON.parse(localStorage.getItem("fav"))||[];
 
-let filterArea = "";
-let filterTypes = [];
-let showFavOnly = false;
-let isAndMode = true;
+let selectedArea="", selectedTypes=[];
+let filterArea="", filterTypes=[];
+let showFavOnly=false, isAndMode=true;
 
-// ===== UI生成 =====
-const areaBox = document.getElementById("filter-area");
-const typeBox = document.getElementById("filter-type");
+// ===== 折りたたみ =====
+function toggleForm(){
+  const box=document.getElementById("formBox");
+  box.style.display=box.style.display==="none"?"block":"none";
+}
 
-AREAS.forEach(a=>{
-  const btn=document.createElement("span");
-  btn.className="tag-btn";
-  btn.innerText=a;
+// ===== ボタン生成 =====
+function createButtons(target, list, callback){
+  list.forEach(item=>{
+    const btn=document.createElement("span");
+    btn.className="tag-btn";
+    btn.innerText=item;
+    btn.onclick=()=>callback(item);
+    target.appendChild(btn);
+  });
+}
 
-  btn.onclick=()=>{
-    filterArea = filterArea===a ? "" : a;
-    renderButtons();
-    render();
-  };
+// 追加用
+createButtons(document.getElementById("area-buttons"), AREAS, (a)=>{
+  selectedArea = selectedArea===a?"":a;
+  renderButtons(); });
 
-  areaBox.appendChild(btn);
+createButtons(document.getElementById("type-buttons"), TYPES, (t)=>{
+  selectedTypes.includes(t)
+    ? selectedTypes=selectedTypes.filter(x=>x!==t)
+    : selectedTypes.push(t);
+  renderButtons();
 });
 
-TYPES.forEach(t=>{
-  const btn=document.createElement("span");
-  btn.className="tag-btn";
-  btn.innerText=t;
+// フィルター用
+createButtons(document.getElementById("filter-area"), AREAS, (a)=>{
+  filterArea = filterArea===a?"":a;
+  renderButtons(); render();
+});
 
-  btn.onclick=()=>{
-    filterTypes.includes(t)
-      ? filterTypes=filterTypes.filter(x=>x!==t)
-      : filterTypes.push(t);
-
-    renderButtons();
-    render();
-  };
-
-  typeBox.appendChild(btn);
+createButtons(document.getElementById("filter-type"), TYPES, (t)=>{
+  filterTypes.includes(t)
+    ? filterTypes=filterTypes.filter(x=>x!==t)
+    : filterTypes.push(t);
+  renderButtons(); render();
 });
 
 function renderButtons(){
-  document.querySelectorAll("#filter-area .tag-btn")
-    .forEach(btn=>btn.classList.toggle("active",btn.innerText===filterArea));
-
-  document.querySelectorAll("#filter-type .tag-btn")
-    .forEach(btn=>btn.classList.toggle("active",filterTypes.includes(btn.innerText)));
+  document.querySelectorAll(".tag-btn").forEach(btn=>{
+    const text=btn.innerText;
+    btn.classList.toggle("active",
+      text===selectedArea ||
+      selectedTypes.includes(text) ||
+      text===filterArea ||
+      filterTypes.includes(text)
+    );
+  });
 }
 
-// ===== トグル =====
-function toggleFavFilter(){
-  showFavOnly=!showFavOnly;
-  render();
-}
+// ===== 保存 =====
+function saveSpot(){
+  const name=nameInput.value.trim();
+  const desc=descInput.value;
 
-function toggleMode(){
-  isAndMode=!isAndMode;
-  alert(isAndMode ? "AND検索" : "OR検索");
+  if(!name) return alert("名前必須");
+
+  const tags=[selectedArea,...selectedTypes].filter(Boolean);
+  spots.push({name,desc,tags});
+
+  localStorage.setItem("spots",JSON.stringify(spots));
+
+  nameInput.value="";
+  descInput.value="";
+  selectedArea="";
+  selectedTypes=[];
+
+  renderButtons();
   render();
 }
 
 // ===== 表示 =====
 function render(){
-  const keyword = search.value.toLowerCase();
-  const list = document.getElementById("spot-list");
+  const keyword=search.value.toLowerCase();
+  const list=document.getElementById("spot-list");
   list.innerHTML="";
 
-  spots
-    .filter(s=>{
-      // 検索
-      if (!s.name.toLowerCase().includes(keyword)) return false;
+  spots.filter(s=>{
+    if(!s.name.toLowerCase().includes(keyword)) return false;
+    if(filterArea && !s.tags.includes(filterArea)) return false;
+    if(showFavOnly && !favorites.includes(s.name)) return false;
 
-      // エリア
-      if (filterArea && !s.tags.includes(filterArea)) return false;
+    if(filterTypes.length){
+      if(isAndMode && !filterTypes.every(t=>s.tags.includes(t))) return false;
+      if(!isAndMode && !filterTypes.some(t=>s.tags.includes(t))) return false;
+    }
+    return true;
+  }).forEach(s=>{
+    const fav=favorites.includes(s.name);
 
-      // お気に入り
-      if (showFavOnly && !favorites.includes(s.name)) return false;
+    const div=document.createElement("div");
+    div.className="card";
 
-      // タグ
-      if (filterTypes.length){
-        if (isAndMode){
-          if (!filterTypes.every(t=>s.tags.includes(t))) return false;
-        } else {
-          if (!filterTypes.some(t=>s.tags.includes(t))) return false;
-        }
-      }
+    div.innerHTML=`
+      <h3>${s.name}</h3>
+      <div>${s.tags.join(", ")}</div>
 
-      return true;
-    })
-    .forEach((s,i)=>{
-      const fav = favorites.includes(s.name);
+      <button onclick="toggleFavorite('${s.name}')">
+        ${fav?"⭐":"☆"}
+      </button>
+    `;
 
-      const div=document.createElement("div");
-      div.className="card";
-
-      div.innerHTML=`
-        <h3>${s.name}</h3>
-        <div>${s.tags.join(", ")}</div>
-
-        <button onclick="toggleFavorite('${s.name}')">
-          ${fav?"⭐":"☆"}
-        </button>
-      `;
-
-      list.appendChild(div);
-    });
+    list.appendChild(div);
+  });
 }
 
-// ===== お気に入り =====
+// ===== その他 =====
 function toggleFavorite(name){
   favorites.includes(name)
     ? favorites=favorites.filter(f=>f!==name)
@@ -213,7 +258,22 @@ function toggleFavorite(name){
   render();
 }
 
-// 初期化
+function toggleFavFilter(){
+  showFavOnly=!showFavOnly;
+  render();
+}
+
+function toggleMode(){
+  isAndMode=!isAndMode;
+  alert(isAndMode?"AND検索":"OR検索");
+  render();
+}
+
+const nameInput=document.getElementById("name");
+const descInput=document.getElementById("desc");
+
+search.addEventListener("input",render);
+
 renderButtons();
 render();
 </script>
