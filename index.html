@@ -6,257 +6,235 @@
 
 <style>
 body {
-  font-family: sans-serif;
-  padding: 20px;
-  background: #f5f5f5;
+  font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+  margin: 0;
+  background: #f2f4f7;
 }
 
-h1 { text-align: center; }
+header {
+  background: #0f172a;
+  color: white;
+  padding: 15px;
+  text-align: center;
+}
 
-#search {
+.container {
+  padding: 15px;
+  max-width: 600px;
+  margin: auto;
+}
+
+input, textarea {
   width: 100%;
   padding: 10px;
-  margin-bottom: 10px;
+  margin-bottom: 8px;
+  border-radius: 8px;
+  border: 1px solid #ccc;
 }
 
-.tag-btn, .mode-btn {
-  display: inline-block;
-  padding: 6px 10px;
-  margin: 3px;
-  border-radius: 10px;
+button {
+  padding: 8px 12px;
+  border: none;
+  border-radius: 8px;
   cursor: pointer;
-  background: #ddd;
 }
 
-.active {
-  background: #333;
-  color: white;
-}
+.primary { background:#2563eb; color:white; }
+.secondary { background:#e5e7eb; }
+.danger { background:#ef4444; color:white; }
 
 .card {
-  background: white;
-  padding: 15px;
-  margin-bottom: 10px;
-  border-radius: 10px;
+  background:white;
+  padding:15px;
+  margin-bottom:12px;
+  border-radius:12px;
+  box-shadow:0 2px 6px rgba(0,0,0,0.05);
 }
 
-#map {
-  height: 300px;
-  margin-bottom: 20px;
+img {
+  width: 100%;
   border-radius: 10px;
+  margin-bottom: 8px;
 }
 
-/* エリア色 */
-.area-北部 { background: #4da6ff !important; color: white; }
-.area-中部 { background: #ff9933 !important; color: white; }
-.area-南部 { background: #ff4d4d !important; color: white; }
+.tag {
+  display:inline-block;
+  padding:4px 10px;
+  margin:3px;
+  border-radius:20px;
+  font-size:12px;
+  background:#e5e7eb;
+}
 
-button { margin: 5px 5px 5px 0; }
-textarea { width: 100%; margin-top: 5px; }
+.area-北部 { background:#3b82f6; color:white; }
+.area-中部 { background:#f59e0b; color:white; }
+.area-南部 { background:#ef4444; color:white; }
+
+.form-box {
+  background:white;
+  padding:12px;
+  border-radius:12px;
+  margin-bottom:15px;
+}
 </style>
 </head>
 
 <body>
 
-<h1>🌴 種子島ガイド</h1>
+<header>🌴 種子島ガイド</header>
+
+<div class="container">
 
 <input type="text" id="search" placeholder="検索...">
 
-<div>
-  <span class="mode-btn active" onclick="setMode('OR')">OR</span>
-  <span class="mode-btn" onclick="setMode('AND')">AND</span>
+<div class="form-box">
+  <h3>➕ スポット追加 / 編集</h3>
+  <input id="name" placeholder="名前">
+  <input id="tags" placeholder="タグ（例：絶景,海,南部）">
+  <textarea id="desc" placeholder="説明"></textarea>
+
+  <input type="file" id="image" accept="image/*">
+
+  <img id="preview" style="display:none;">
+
+  <button class="primary" onclick="saveSpot()">保存</button>
 </div>
 
-<div id="tag-buttons"></div>
-
-<div id="map"></div>
+<button class="secondary" onclick="exportData()">📤 データ書き出し</button>
 
 <div id="spot-list"></div>
 
-<script>
-const spots = [
-  { name: "種子島宇宙センター", lat:30.4, lng:130.9, tags:["観光","宇宙","南部"] },
-  { name: "千座の岩屋", lat:30.5, lng:130.9, tags:["絶景","海","中部"] },
-  { name: "門倉岬", lat:30.3, lng:130.9, tags:["歴史","絶景","南部"] }
-];
+</div>
 
-// ===== 状態 =====
-let selectedTags = [];
-let mode = "OR";
-let markers = [];
+<script>
+let spots = JSON.parse(localStorage.getItem("spots")) || [];
+let editTarget = null;
+let imageData = "";
+
+// ===== 画像プレビュー =====
+document.getElementById("image").addEventListener("change", function(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = function() {
+    imageData = reader.result;
+    const preview = document.getElementById("preview");
+    preview.src = imageData;
+    preview.style.display = "block";
+  };
+  reader.readAsDataURL(file);
+});
 
 // ===== 保存 =====
-let favorites = JSON.parse(localStorage.getItem("fav")) || [];
-let visits = JSON.parse(localStorage.getItem("visit")) || {};
-let comments = JSON.parse(localStorage.getItem("comment")) || {};
-
-const list = document.getElementById("spot-list");
-const search = document.getElementById("search");
-const tagButtons = document.getElementById("tag-buttons");
-
-const allTags = [...new Set(spots.flatMap(s => s.tags))];
-
-// ===== 地図 =====
-let map;
-
-function initMap() {
-  map = new google.maps.Map(document.getElementById("map"), {
-    center: { lat: 30.4, lng: 130.9 },
-    zoom: 10
-  });
-  applyFilter();
+function saveAll() {
+  localStorage.setItem("spots", JSON.stringify(spots));
 }
 
-function getColor(tags) {
-  if (tags.includes("北部")) return "blue";
-  if (tags.includes("中部")) return "orange";
-  if (tags.includes("南部")) return "red";
-  return "gray";
+function saveSpot() {
+  const name = nameInput.value.trim();
+  const tags = tagsInput.value.split(",").map(t=>t.trim());
+  const desc = descInput.value;
+
+  if (!name) return alert("名前必須");
+
+  if (editTarget) {
+    editTarget.name = name;
+    editTarget.tags = tags;
+    editTarget.desc = desc;
+    if (imageData) editTarget.img = imageData;
+    editTarget = null;
+  } else {
+    spots.push({ name, tags, desc, img:imageData });
+  }
+
+  saveAll();
+  clearForm();
+  render();
 }
 
-function renderMap(data) {
-  markers.forEach(m => m.setMap(null));
-  markers = [];
+function editSpot(i) {
+  const s = spots[i];
+  editTarget = s;
 
-  data.forEach(spot => {
-    const marker = new google.maps.Marker({
-      position: { lat: spot.lat, lng: spot.lng },
-      map: map,
-      title: spot.name,
-      icon: {
-        url: `http://maps.google.com/mapfiles/ms/icons/${getColor(spot.tags)}-dot.png`
-      }
-    });
+  nameInput.value = s.name;
+  tagsInput.value = s.tags.join(",");
+  descInput.value = s.desc;
+  imageData = s.img || "";
 
-    markers.push(marker);
-  });
+  if (s.img) {
+    preview.src = s.img;
+    preview.style.display = "block";
+  }
 }
 
-// ===== タグ =====
-function renderTags() {
-  tagButtons.innerHTML = "";
-  allTags.forEach(tag => {
-    const btn = document.createElement("span");
-    btn.className = "tag-btn " + (["北部","中部","南部"].includes(tag) ? "area-"+tag : "");
-    btn.innerText = tag;
-
-    btn.onclick = () => {
-      selectedTags.includes(tag)
-        ? selectedTags = selectedTags.filter(t => t !== tag)
-        : selectedTags.push(tag);
-      applyFilter();
-      updateUI();
-    };
-
-    tagButtons.appendChild(btn);
-  });
+function deleteSpot(i) {
+  if (!confirm("削除する？")) return;
+  spots.splice(i,1);
+  saveAll();
+  render();
 }
 
-// ===== UI =====
-function setMode(m) {
-  mode = m;
-  applyFilter();
-  updateUI();
-}
-
-function updateUI() {
-  document.querySelectorAll(".tag-btn").forEach(btn => {
-    btn.classList.toggle("active", selectedTags.includes(btn.innerText));
-  });
-
-  document.querySelectorAll(".mode-btn").forEach(btn => {
-    btn.classList.toggle("active", btn.innerText === mode);
-  });
-}
-
-// ===== 機能 =====
-function toggleFavorite(name) {
-  favorites.includes(name)
-    ? favorites = favorites.filter(f => f !== name)
-    : favorites.push(name);
-
-  localStorage.setItem("fav", JSON.stringify(favorites));
-  applyFilter();
-}
-
-function toggleVisit(name) {
-  visits[name] = new Date().toLocaleDateString();
-  localStorage.setItem("visit", JSON.stringify(visits));
-  applyFilter();
-}
-
-function saveComment(name, text) {
-  comments[name] = text;
-  localStorage.setItem("comment", JSON.stringify(comments));
+function clearForm() {
+  nameInput.value="";
+  tagsInput.value="";
+  descInput.value="";
+  image.value="";
+  preview.style.display="none";
+  imageData="";
 }
 
 // ===== 表示 =====
-function render(data) {
+function render() {
+  const keyword = search.value.toLowerCase();
+  const list = document.getElementById("spot-list");
   list.innerHTML = "";
 
-  data.forEach(spot => {
-    const fav = favorites.includes(spot.name);
-    const visitDate = visits[spot.name] || "";
-    const comment = comments[spot.name] || "";
+  spots
+    .filter(s=>s.name.toLowerCase().includes(keyword))
+    .forEach((s,i)=>{
+      const div = document.createElement("div");
+      div.className = "card";
 
-    const div = document.createElement("div");
-    div.className = "card";
+      div.innerHTML = `
+        ${s.img ? `<img src="${s.img}">` : ""}
 
-    div.innerHTML = `
-      <h2>${spot.name}</h2>
+        <h2>${s.name}</h2>
+        <div>${s.desc || ""}</div>
 
-      <button onclick="toggleFavorite('${spot.name}')">
-        ${fav ? "⭐ お気に入り済み" : "☆ お気に入り"}
-      </button>
+        <div>
+          ${s.tags.map(t=>{
+            const cls = ["北部","中部","南部"].includes(t) ? "area-"+t : "";
+            return `<span class="tag ${cls}">${t}</span>`;
+          }).join("")}
+        </div>
 
-      <button onclick="toggleVisit('${spot.name}')">
-        ✅ 訪問 ${visitDate ? "(" + visitDate + ")" : ""}
-      </button>
+        <button onclick="editSpot(${i})">✏️ 編集</button>
+        <button class="danger" onclick="deleteSpot(${i})">🗑 削除</button>
+      `;
 
-      <div>
-        ${spot.tags.map(t => {
-          const cls = ["北部","中部","南部"].includes(t) ? "area-"+t : "";
-          return `<span class="tag-btn ${cls}">${t}</span>`;
-        }).join("")}
-      </div>
-
-      <textarea onchange="saveComment('${spot.name}', this.value)">${comment}</textarea>
-    `;
-
-    list.appendChild(div);
-  });
-
-  renderMap(data);
+      list.appendChild(div);
+    });
 }
 
-// ===== フィルター =====
-function applyFilter() {
-  const keyword = search.value.toLowerCase();
-
-  let filtered = spots.filter(s =>
-    s.name.toLowerCase().includes(keyword)
-  );
-
-  if (selectedTags.length) {
-    filtered = filtered.filter(s =>
-      mode === "OR"
-        ? selectedTags.some(t => s.tags.includes(t))
-        : selectedTags.every(t => s.tags.includes(t))
-    );
-  }
-
-  render(filtered);
+// ===== エクスポート =====
+function exportData() {
+  const text = JSON.stringify(spots,null,2);
+  navigator.clipboard.writeText(text);
+  alert("コピーしました");
 }
 
-search.addEventListener("input", applyFilter);
+search.addEventListener("input", render);
 
 // 初期化
-renderTags();
-updateUI();
-</script>
+const nameInput = document.getElementById("name");
+const tagsInput = document.getElementById("tags");
+const descInput = document.getElementById("desc");
+const image = document.getElementById("image");
+const preview = document.getElementById("preview");
 
-<!-- ★ここにAPIキー入れる -->
-<script src="https://maps.googleapis.com/maps/api/js?key=YOUR_API_KEY&callback=initMap" async defer></script>
+render();
+</script>
 
 </body>
 </html>
