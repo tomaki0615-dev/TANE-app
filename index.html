@@ -6,8 +6,6 @@
 
 <title>種子島ガイド</title>
 
-<link rel="apple-touch-icon" href="icon.png">
-
 <style>
 body{
   font-family:-apple-system, BlinkMacSystemFont;
@@ -16,7 +14,6 @@ body{
   font-size:17px;
 }
 
-/* ヘッダー */
 header{
   position:fixed;
   top:0;
@@ -30,7 +27,6 @@ header{
   z-index:1000;
 }
 
-/* コンテンツ */
 .container{
   padding:80px 10px 20px;
 }
@@ -44,7 +40,6 @@ input, textarea{
   font-size:16px;
 }
 
-/* ボタン */
 button{
   padding:14px;
   border-radius:12px;
@@ -62,7 +57,6 @@ button{
   flex:1;
 }
 
-/* タグ */
 .tag-btn{
   padding:10px 14px;
   margin:4px;
@@ -70,6 +64,7 @@ button{
   background:#eee;
   display:inline-block;
   cursor:pointer;
+  user-select:none;
 }
 
 .tag-btn.active{
@@ -77,7 +72,6 @@ button{
   color:white;
 }
 
-/* カード */
 .card{
   display:flex;
   gap:10px;
@@ -167,40 +161,21 @@ button{
 <script>
 
 /* =========================
-   タグ定義（更新版）
+   タグ
 ========================= */
 const AREAS=["北部","中部","南部"];
 
-const TYPES = [
-  "カフェ",
-  "レストラン",
-  "パン",
-  "ホテル",
-  "スーパー",
-  "ドラッグストア",
-  "コンビニ",
-  "土産",
-  "個人商店",
-  "無人販売",
-  "レジャー",
-  "温泉",
-  "神社",
-  "博物館",
-  "工場",
-  "公園",
-  "海岸",
-  "星空",
-  "宇宙",
-  "絶景",
-  "猫",
-  "知人友人・親戚",
-  "その他"
+const TYPES=[
+  "カフェ","レストラン","パン","ホテル","スーパー","ドラッグストア",
+  "コンビニ","土産","個人商店","無人販売","レジャー","温泉","神社",
+  "工場","博物館","公園","海岸","星空","宇宙","絶景","猫",
+  "知人友人・親戚","その他"
 ];
 
 /* =========================
-   状態（完全統合版）
+   状態
 ========================= */
-const state = {
+let state = {
   spots: JSON.parse(localStorage.getItem("spots")) || [],
   favorites: JSON.parse(localStorage.getItem("fav")) || [],
 
@@ -253,11 +228,11 @@ function bind(){
 }
 
 /* =========================
-   フォーム
+   UI
 ========================= */
 function toggleForm(){
   formBox.style.display =
-    formBox.style.display==="block" ? "none":"block";
+    formBox.style.display==="block"?"none":"block";
 }
 
 /* =========================
@@ -274,7 +249,7 @@ function make(target,list,mode){
   list.forEach(item=>{
     const el=document.createElement("span");
     el.className="tag-btn";
-    el.textContent=item;
+    el.innerText=item;
 
     el.onclick=()=>handleTag(mode,item);
 
@@ -283,7 +258,7 @@ function make(target,list,mode){
 }
 
 /* =========================
-   タグ操作
+   タグ制御（重要）
 ========================= */
 function handleTag(mode,item){
 
@@ -347,7 +322,7 @@ function saveSpot(){
 }
 
 /* =========================
-   フィルター
+   フィルター（安定化）
 ========================= */
 function filterData(){
   const k=state.filter.keyword.toLowerCase();
@@ -375,9 +350,29 @@ function filterData(){
 }
 
 /* =========================
+   ★ ここが修正ポイント（重要）
+========================= */
+function updateActiveButtons(){
+
+  document.querySelectorAll(".tag-btn").forEach(btn=>{
+    const t=btn.innerText;
+
+    const active =
+      t===state.filter.area ||
+      state.filter.types.includes(t) ||
+      t===state.form.area ||
+      state.form.types.includes(t);
+
+    btn.classList.toggle("active",active);
+  });
+}
+
+/* =========================
    描画
 ========================= */
 function render(){
+
+  updateActiveButtons();
 
   const list=filterData();
   spotList.innerHTML="";
