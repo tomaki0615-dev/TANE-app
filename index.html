@@ -3,129 +3,15 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-
 <title>種子島スポット</title>
 
 <style>
-body{
-  font-family:-apple-system, BlinkMacSystemFont;
-  margin:0;
-  background:#f9fafb;
-  font-size:17px;
-}
-
-header{
-  position:fixed;
-  top:0;
-  width:100%;
-  background:rgba(255,255,255,0.95);
-  backdrop-filter:blur(10px);
-  border-bottom:1px solid #ddd;
-  padding:10px;
-  text-align:center;
-  font-weight:bold;
-  z-index:1000;
-}
-
-/* タブ */
-.tabs{
-  display:flex;
-  position:fixed;
-  top:44px;
-  width:100%;
-  background:white;
-  border-bottom:1px solid #ddd;
-  z-index:999;
-}
-
-.tab{
-  flex:1;
-  padding:12px;
-  text-align:center;
-  cursor:pointer;
-}
-
-.tab.active{
-  background:#3b82f6;
-  color:white;
-}
-
-/* コンテンツ */
-.container{
-  padding:110px 10px 20px;
-}
-
-/* 入力 */
-input, textarea{
-  width:100%;
-  padding:14px;
-  border-radius:12px;
-  border:1px solid #ddd;
-  margin-bottom:10px;
-}
-
-/* ボタン */
-button{
-  padding:10px 12px;
-  border-radius:10px;
-  border:none;
-  background:#e5e7eb;
-  cursor:pointer;
-}
-
-/* タグ */
-.tag-btn{
-  padding:10px 14px;
-  margin:4px;
-  border-radius:20px;
-  background:#eee;
-  display:inline-block;
-  cursor:pointer;
-}
-
-.tag-btn.active{
-  background:#3b82f6;
-  color:white;
-}
-
-/* カード */
-.card{
-  display:flex;
-  gap:10px;
-  background:white;
-  padding:12px;
-  margin-bottom:12px;
-  border-radius:16px;
-  box-shadow:0 2px 6px rgba(0,0,0,0.05);
-  cursor:grab;
-}
-
-.card img{
-  width:100px;
-  height:80px;
-  object-fit:cover;
-  border-radius:10px;
-}
-
-.card-actions{
-  display:flex;
-  gap:6px;
-  margin-top:6px;
-}
-
-.delete-btn{
-  background:#ef4444;
-  color:white;
-}
-
-/* 表示 */
-.page{ display:none; }
-.page.active{ display:block; }
-
-#andBtn.on{
-  background:#3b82f6;
-  color:white;
-}
+body{font-family:-apple-system; margin:0; background:#f9fafb;}
+header{position:fixed;top:0;width:100%;padding:10px;text-align:center;background:#fff;border-bottom:1px solid #ddd;z-index:1000;}
+.container{padding:100px 10px;}
+.card{background:#fff;padding:12px;margin-bottom:10px;border-radius:12px;box-shadow:0 2px 6px rgba(0,0,0,.05);}
+button{padding:8px 10px;border:0;border-radius:8px;cursor:pointer;}
+.delete{background:#ef4444;color:#fff;}
 </style>
 </head>
 
@@ -133,337 +19,64 @@ button{
 
 <header>🌴 種子島スポット</header>
 
-<div class="tabs">
-  <div class="tab active" onclick="switchTab('search')">検索</div>
-  <div class="tab" onclick="switchTab('add')">追加</div>
-</div>
-
 <div class="container">
 
-<!-- ================= 検索 ================= -->
-<div id="searchPage" class="page active">
+<input id="name" placeholder="名前">
+<textarea id="desc" placeholder="説明"></textarea>
+<button onclick="add()">追加</button>
 
-  <input id="search" placeholder="検索">
-
-  <button id="andBtn" onclick="toggleAndMode()">☑ AND検索</button>
-
-  <div>
-    <div>エリア</div>
-    <div id="filter-area"></div>
-
-    <div>種類タグ</div>
-    <div id="filter-type"></div>
-  </div>
-
-  <div id="spot-list"></div>
-
-</div>
-
-<!-- ================= 追加 ================= -->
-<div id="addPage" class="page">
-
-  <input id="name" placeholder="名前">
-  <textarea id="desc" placeholder="説明"></textarea>
-
-  <div>エリア</div>
-  <div id="area-buttons"></div>
-
-  <div>種類タグ</div>
-  <div id="type-buttons"></div>
-
-  <input type="file" id="image">
-  <img id="preview" style="display:none;width:100%;border-radius:10px;">
-
-  <button onclick="saveSpot()">保存</button>
-
-</div>
+<div id="list"></div>
 
 </div>
 
 <script>
 
-/* =========================
-   データ
-========================= */
-const AREAS=["北部","中部","南部"];
+let spots = JSON.parse(localStorage.getItem("spots")) || [];
 
-const TYPES=[
-  "カフェ","レストラン","土産","個人商店","無人販売",
-  "レジャー","温泉","神社","工場","博物館","公園",
-  "海岸","星空","絶景","猫","知人友人・親戚","その他"
-];
-
-/* =========================
-   状態
-========================= */
-let dragIndex = null;
-
-let state = {
-  spots: JSON.parse(localStorage.getItem("spots")) || [],
-
-  form:{
-    area:"",
-    types:[],
-    image:""
-  },
-
-  filter:{
-    area:"",
-    types:[],
-    keyword:"",
-    andMode:true
-  }
-};
-
-/* =========================
-   初期化
-========================= */
-init();
-
-function init(){
-  bind();
-  createButtons();
-  updateAndUI();
-  render();
+function save(){
+  localStorage.setItem("spots",JSON.stringify(spots));
 }
 
-/* =========================
-   DOM
-========================= */
-const el = id => document.getElementById(id);
+function add(){
+  const name=document.getElementById("name").value;
+  const desc=document.getElementById("desc").value;
 
-const searchEl = el("search");
-const nameEl = el("name");
-const descEl = el("desc");
-const imageEl = el("image");
-const previewEl = el("preview");
+  if(!name) return alert("名前入れて");
 
-const spotList = el("spot-list");
-const andBtn = el("andBtn");
-
-/* =========================
-   イベント
-========================= */
-function bind(){
-  searchEl.oninput=e=>{
-    state.filter.keyword=e.target.value;
-    render();
-  };
-
-  imageEl.onchange=e=>{
-    const f=e.target.files[0];
-    if(!f) return;
-
-    const r=new FileReader();
-    r.onload=()=>{
-      state.form.image=r.result;
-      previewEl.src=r.result;
-      previewEl.style.display="block";
-    };
-    r.readAsDataURL(f);
-  };
-}
-
-/* =========================
-   ボタン生成
-========================= */
-function createButtons(){
-  make("area-buttons",AREAS,"area");
-  make("type-buttons",TYPES,"type");
-  make("filter-area",AREAS,"filterArea");
-  make("filter-type",TYPES,"filterType");
-}
-
-function make(id,list,mode){
-  const target=el(id);
-
-  list.forEach(item=>{
-    const b=document.createElement("span");
-    b.className="tag-btn";
-    b.innerText=item;
-    b.onclick=()=>handleTag(mode,item);
-    target.appendChild(b);
-  });
-}
-
-/* =========================
-   タグ
-========================= */
-function handleTag(mode,item){
-
-  if(mode==="area"){
-    state.form.area = state.form.area===item?"":item;
-  }
-
-  if(mode==="type"){
-    state.form.types.includes(item)
-      ? state.form.types=state.form.types.filter(t=>t!==item)
-      : state.form.types.push(item);
-  }
-
-  if(mode==="filterArea"){
-    state.filter.area = state.filter.area===item?"":item;
-  }
-
-  if(mode==="filterType"){
-    state.filter.types.includes(item)
-      ? state.filter.types=state.filter.types.filter(t=>t!==item)
-      : state.filter.types.push(item);
-  }
-
-  render();
-}
-
-/* =========================
-   保存
-========================= */
-function saveSpot(){
-
-  state.spots.push({
-    name:nameEl.value,
-    desc:descEl.value,
-    tags:{
-      area:state.form.area,
-      types:state.form.types
-    },
-    img:state.form.image
+  spots.push({
+    id:Date.now(),   // ←これが超重要（安定ID）
+    name,
+    desc
   });
 
-  localStorage.setItem("spots",JSON.stringify(state.spots));
-
-  nameEl.value="";
-  descEl.value="";
-  state.form.area="";
-  state.form.types=[];
-  state.form.image="";
-  previewEl.style.display="none";
-
-  switchTab("search");
+  save();
   render();
 }
 
-/* =========================
-   削除 ★NEW
-========================= */
-function deleteSpot(i){
-  if(!confirm("このスポットを削除する？")) return;
-
-  state.spots.splice(i,1);
-  localStorage.setItem("spots",JSON.stringify(state.spots));
+function remove(id){
+  spots = spots.filter(s=>s.id!==id);
+  save();
   render();
 }
 
-/* =========================
-   フィルター
-========================= */
-function getTypes(s){ return s.tags?.types || []; }
-function getArea(s){ return s.tags?.area || ""; }
-
-function filterData(){
-  const k = state.filter.keyword.toLowerCase();
-
-  return state.spots.filter(s=>{
-
-    if(!s.name.toLowerCase().includes(k)) return false;
-
-    if(state.filter.area &&
-      getArea(s)!==state.filter.area) return false;
-
-    const types=getTypes(s);
-
-    if(state.filter.types.length){
-      if(state.filter.andMode){
-        if(!state.filter.types.every(t=>types.includes(t))) return false;
-      }else{
-        if(!state.filter.types.some(t=>types.includes(t))) return false;
-      }
-    }
-
-    return true;
-  });
-}
-
-/* =========================
-   描画
-========================= */
 function render(){
+  const list=document.getElementById("list");
+  list.innerHTML="";
 
-  spotList.innerHTML="";
+  spots.forEach(s=>{
+    const div=document.createElement("div");
+    div.className="card";
 
-  filterData().forEach((s,i)=>{
-
-    const d=document.createElement("div");
-    d.className="card";
-
-    d.innerHTML=`
-      ${s.img?`<img src="${s.img}">`:""}
-      <div>
-        <h3>${s.name}</h3>
-        <div>${s.desc||""}</div>
-        <div style="font-size:12px;color:#666;">
-          ${getArea(s)} ${(getTypes(s)).join(", ")}
-        </div>
-
-        <div class="card-actions">
-          <button onclick="deleteSpot(${i})" class="delete-btn">削除</button>
-        </div>
-
-      </div>
+    div.innerHTML=`
+      <div><b>${s.name}</b><br>${s.desc||""}</div>
+      <button class="delete" onclick="remove(${s.id})">削除</button>
     `;
 
-    spotList.appendChild(d);
-  });
-
-  updateActive();
-}
-
-/* =========================
-   active
-========================= */
-function updateActive(){
-
-  document.querySelectorAll(".tag-btn").forEach(btn=>{
-    const t=btn.innerText;
-
-    const active =
-      t===state.form.area ||
-      t===state.filter.area ||
-      state.form.types.includes(t) ||
-      state.filter.types.includes(t);
-
-    btn.classList.toggle("active",active);
+    list.appendChild(div);
   });
 }
 
-/* =========================
-   AND
-========================= */
-function toggleAndMode(){
-  state.filter.andMode=!state.filter.andMode;
-  updateAndUI();
-  render();
-}
-
-function updateAndUI(){
-  andBtn.innerText = state.filter.andMode
-    ? "☑ AND検索"
-    : "☐ AND検索";
-
-  andBtn.classList.toggle("on",state.filter.andMode);
-}
-
-function switchTab(tab){
-  document.querySelectorAll(".page").forEach(p=>p.classList.remove("active"));
-  document.querySelectorAll(".tab").forEach(t=>t.classList.remove("active"));
-
-  if(tab==="search"){
-    el("searchPage").classList.add("active");
-    document.querySelectorAll(".tab")[0].classList.add("active");
-  }else{
-    el("addPage").classList.add("active");
-    document.querySelectorAll(".tab")[1].classList.add("active");
-  }
-}
+render();
 
 </script>
 
