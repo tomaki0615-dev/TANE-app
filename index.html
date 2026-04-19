@@ -174,6 +174,7 @@ button{
 
 <script>
 
+/* データ */
 const AREAS=["北部","中部","南部"];
 
 const TYPES=[
@@ -190,9 +191,16 @@ const state = {
   spots: JSON.parse(localStorage.getItem("spots")) || [],
   fav: JSON.parse(localStorage.getItem("fav")) || [],
   form:{ area:"", types:[], image:"" },
-  filter:{ keyword:"", and:true, favOnly:false }
+  filter:{
+    keyword:"",
+    and:true,
+    favOnly:false,
+    area:"",
+    types:[]
+  }
 };
 
+/* DOM */
 const searchEl = el("search");
 const nameEl = el("name");
 const descEl = el("desc");
@@ -203,6 +211,7 @@ const spotList = el("spot-list");
 const andBtn = el("andBtn");
 const favBtn = el("favBtn");
 
+/* 初期化 */
 init();
 
 function init(){
@@ -247,7 +256,7 @@ function bind(){
   };
 }
 
-/* ボタン */
+/* ボタン生成 */
 function createButtons(){
   make("area-buttons",AREAS,"area");
   make("type-buttons",TYPES,"type");
@@ -269,18 +278,33 @@ function make(id,list,type){
 /* タグ */
 function tag(type,val){
 
-  if(type==="area") state.form.area = state.form.area===val?"":val;
+  if(type==="area"){
+    state.form.area = state.form.area===val?"":val;
+  }
+
   if(type==="type"){
     state.form.types.includes(val)
       ? state.form.types=state.form.types.filter(t=>t!==val)
       : state.form.types.push(val);
   }
 
+  if(type==="farea"){
+    state.filter.area = state.filter.area===val?"":val;
+  }
+
+  if(type==="ftype"){
+    state.filter.types.includes(val)
+      ? state.filter.types=state.filter.types.filter(t=>t!==val)
+      : state.filter.types.push(val);
+  }
+
   render();
 }
 
-/* 保存（編集対応） */
+/* 保存 */
 function saveSpot(){
+
+  if(!nameEl.value.trim()) return alert("名前必須");
 
   const data = {
     name:nameEl.value,
@@ -350,12 +374,11 @@ function isFav(n){
   return state.fav.includes(n);
 }
 
-/* エクスポート（安全版） */
+/* エクスポート */
 function exportData(){
 
   const data = {
     version:1,
-    exportedAt:new Date().toISOString(),
     spots: state.spots,
     fav: state.fav
   };
@@ -376,7 +399,28 @@ function render(){
 
   spotList.innerHTML="";
 
-  state.spots.forEach((s,i)=>{
+  const list = state.spots.filter(s=>{
+
+    if(state.filter.keyword &&
+       !s.name.includes(state.filter.keyword)) return false;
+
+    if(state.filter.favOnly && !isFav(s.name)) return false;
+
+    if(state.filter.area &&
+       s.tags?.area !== state.filter.area) return false;
+
+    if(state.filter.types.length){
+      if(state.filter.and){
+        if(!state.filter.types.every(t=>s.tags?.types?.includes(t))) return false;
+      }else{
+        if(!state.filter.types.some(t=>s.tags?.types?.includes(t))) return false;
+      }
+    }
+
+    return true;
+  });
+
+  list.forEach((s,i)=>{
 
     const d=document.createElement("div");
     d.className="card";
@@ -415,21 +459,29 @@ function updateUI(){
 
   document.querySelectorAll(".tag-btn").forEach(b=>{
     const t=b.innerText;
-    b.classList.toggle("active",
+
+    const active =
       t===state.form.area ||
-      state.form.types.includes(t)
-    );
+      t===state.filter.area ||
+      state.form.types.includes(t) ||
+      state.filter.types.includes(t);
+
+    b.classList.toggle("active",active);
   });
 }
 
+/* toggle */
 function toggleAnd(){
   state.filter.and=!state.filter.and;
+  render();
 }
 
 function toggleFavFilter(){
   state.filter.favOnly=!state.filter.favOnly;
+  render();
 }
 
+/* リセット */
 function resetForm(){
   nameEl.value="";
   descEl.value="";
