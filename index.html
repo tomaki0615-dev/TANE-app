@@ -5,8 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>種子島の見どころ</title>
 
-<link rel="apple-touch-icon" sizes="180x180" href="icon.png">
-<link rel="icon" type="image/png" href="icon.png">
+<link rel="apple-touch-icon" href="icon.png">
+<link rel="icon" href="icon.png">
 
 <style>
 body{
@@ -114,8 +114,7 @@ button{
 .page{ display:none; }
 .page.active{ display:block; }
 
-#andBtn.on,
-#favBtn.on{
+#andBtn.on{
   background:#3b82f6;
   color:#fff;
 }
@@ -140,7 +139,6 @@ button{
 
   <div class="row">
     <button id="andBtn" onclick="toggleAndMode()">☑ AND検索</button>
-    <button id="favBtn" onclick="toggleFavFilter()">☆ お気に入り</button>
     <button onclick="exportData()">📤 エクスポート</button>
   </div>
 
@@ -196,20 +194,15 @@ const previewEl = el("preview");
 
 const spotList = el("spot-list");
 const andBtn = el("andBtn");
-const favBtn = el("favBtn");
 
 let state = {
   spots: JSON.parse(localStorage.getItem("spots")) || [],
-  fav: JSON.parse(localStorage.getItem("fav")) || [],
-
   form:{ area:"", types:[], image:"" },
-
   filter:{
     area:"",
     types:[],
     keyword:"",
-    and:true,
-    favOnly:false
+    and:true
   }
 };
 
@@ -222,7 +215,6 @@ function init(){
   updateUI();
 }
 
-/* タブ */
 function switchTab(t){
   document.querySelectorAll(".page").forEach(p=>p.classList.remove("active"));
   document.querySelectorAll(".tab").forEach(t=>t.classList.remove("active"));
@@ -236,7 +228,6 @@ function switchTab(t){
   }
 }
 
-/* イベント */
 function bind(){
   searchEl.oninput=e=>{
     state.filter.keyword=e.target.value;
@@ -246,6 +237,7 @@ function bind(){
   imageEl.onchange=e=>{
     const f=e.target.files[0];
     if(!f) return;
+
     const r=new FileReader();
     r.onload=()=>{
       state.form.image=r.result;
@@ -256,7 +248,6 @@ function bind(){
   };
 }
 
-/* ボタン */
 function createButtons(){
   make("area-buttons",AREAS,"area");
   make("type-buttons",TYPES,"type");
@@ -275,7 +266,6 @@ function make(id,list,type){
   });
 }
 
-/* タグ */
 function tag(type,val){
 
   if(type==="area"){
@@ -301,14 +291,13 @@ function tag(type,val){
   render();
 }
 
-/* 保存 */
 function saveSpot(){
 
   state.spots.push({
-    name:nameEl.value || "",
-    desc:descEl.value || "",
+    name:nameEl.value,
+    desc:descEl.value,
     tags:{ area:state.form.area, types:state.form.types },
-    img:state.form.image || ""
+    img:state.form.image
   });
 
   localStorage.setItem("spots",JSON.stringify(state.spots));
@@ -324,38 +313,35 @@ function saveSpot(){
   render();
 }
 
-/* 🔥 エクスポート（完全修正版） */
+/* 🌟 ここが重要：画像を完全に除外してエクスポート */
 function exportData(){
-console.table(state.spots);
-  
-  // 👇 ここが核心（壊れ防止）
-  const safeSpots = (state.spots || []).filter(s =>
-    s &&
-    typeof s === "object" &&
-    s.name
-  );
+
+  const safeSpots = state.spots.map(s => ({
+    name: s.name || "",
+    desc: s.desc || "",
+    tags: s.tags || { area:"", types:[] }
+    // imgは意図的に削除
+  }));
 
   const data = {
-    version: 1,
-    exportedAt: new Date().toISOString(),
-    spots: safeSpots,
-    fav: state.fav || []
+    version:1,
+    exportedAt:new Date().toISOString(),
+    spots:safeSpots
   };
 
   const json = JSON.stringify(data, null, 2);
 
-  const blob = new Blob([json], { type:"application/json" });
+  const blob = new Blob([json], {type:"application/json"});
   const url = URL.createObjectURL(blob);
 
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = "tanegashima_spots.json";
+  const a=document.createElement("a");
+  a.href=url;
+  a.download="tanegashima_spots.json";
   a.click();
 
   URL.revokeObjectURL(url);
 }
 
-/* 表示 */
 function render(){
 
   spotList.innerHTML="";
@@ -366,7 +352,7 @@ function render(){
     d.className="card";
 
     d.innerHTML=`
-      ${s.img?`<img src="${s.img}">`:""}
+      ${s.img ? `<img src="${s.img}">` : ""}
       <div>
         <h3>${s.name}</h3>
         <div>${s.desc||""}</div>
@@ -382,10 +368,8 @@ function render(){
   updateUI();
 }
 
-/* UI */
 function updateUI(){
   andBtn.classList.toggle("on",state.filter.and);
-  favBtn.classList.toggle("on",state.filter.favOnly);
 
   document.querySelectorAll(".tag-btn").forEach(b=>{
     const t=b.innerText;
@@ -398,14 +382,8 @@ function updateUI(){
   });
 }
 
-/* toggle */
 function toggleAndMode(){
   state.filter.and=!state.filter.and;
-  render();
-}
-
-function toggleFavFilter(){
-  state.filter.favOnly=!state.filter.favOnly;
   render();
 }
 
