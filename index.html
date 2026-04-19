@@ -13,7 +13,7 @@ body{
   font-family:-apple-system, BlinkMacSystemFont;
   margin:0;
   background:#f9fafb;
-  font-size:17px;
+  font-size:16px;
 }
 
 header{
@@ -21,7 +21,6 @@ header{
   top:0;
   width:100%;
   background:rgba(255,255,255,0.95);
-  backdrop-filter:blur(10px);
   border-bottom:1px solid #ddd;
   padding:10px;
   text-align:center;
@@ -40,9 +39,8 @@ header{
 
 .tab{
   flex:1;
-  padding:12px;
+  padding:10px;
   text-align:center;
-  cursor:pointer;
 }
 
 .tab.active{
@@ -51,87 +49,22 @@ header{
 }
 
 .container{
-  padding:110px 10px 20px;
+  padding:100px 10px 20px;
 }
 
 input, textarea{
   width:100%;
   padding:12px;
-  border-radius:12px;
+  border-radius:10px;
   border:1px solid #ddd;
   margin-bottom:10px;
 }
 
-/* ボタン */
 button{
-  padding:6px 10px;
-  border-radius:8px;
+  padding:8px;
+  border-radius:10px;
   border:none;
   background:#e5e7eb;
-  cursor:pointer;
-  font-size:14px;
-}
-
-/* カード */
-.card{
-  display:flex;
-  justify-content:space-between;
-  align-items:flex-start;
-  background:white;
-  padding:10px;
-  margin-bottom:10px;
-  border-radius:14px;
-  box-shadow:0 2px 6px rgba(0,0,0,0.05);
-}
-
-.card-main{
-  display:flex;
-  gap:10px;
-  flex:1;
-}
-
-.card img{
-  width:90px;
-  height:70px;
-  object-fit:cover;
-  border-radius:10px;
-}
-
-.card-text h3{
-  margin:0;
-  font-size:16px;
-}
-
-.card-text div{
-  font-size:13px;
-}
-
-.card-actions{
-  display:flex;
-  flex-direction:column;
-  gap:6px;
-  margin-left:8px;
-}
-
-/* タグ */
-.tag-btn{
-  padding:8px 12px;
-  margin:4px;
-  border-radius:20px;
-  background:#eee;
-  display:inline-block;
-  cursor:pointer;
-}
-
-.tag-btn.active{
-  background:#3b82f6;
-  color:white;
-}
-
-/* 検索タグは色変える */
-#filter-area .tag-btn.active,
-#filter-type .tag-btn.active{
-  background:#60a5fa;
 }
 
 .row{
@@ -142,12 +75,53 @@ button{
 
 .row button{ flex:1; }
 
+.tag-btn{
+  padding:8px 12px;
+  margin:4px;
+  border-radius:20px;
+  background:#eee;
+  display:inline-block;
+}
+
+.tag-btn.active{
+  background:#3b82f6;
+  color:white;
+}
+
+.card{
+  display:flex;
+  gap:8px;
+  background:white;
+  padding:10px;
+  margin-bottom:10px;
+  border-radius:12px;
+}
+
+.card img{
+  width:90px;
+  height:70px;
+  object-fit:cover;
+  border-radius:8px;
+}
+
 .page{ display:none; }
 .page.active{ display:block; }
 
 .on{
   background:#3b82f6 !important;
   color:white !important;
+}
+
+/* モーダル */
+#modal{
+  position:fixed;
+  bottom:0;
+  width:100%;
+  background:white;
+  border-top:1px solid #ddd;
+  padding:20px;
+  display:none;
+  z-index:2000;
 }
 </style>
 </head>
@@ -206,6 +180,13 @@ button{
 
 </div>
 
+<!-- 長押しメニュー -->
+<div id="modal">
+  <button onclick="edit(selectedIndex)">編集</button>
+  <button onclick="del(selectedIndex)">削除</button>
+  <button onclick="closeModal()">キャンセル</button>
+</div>
+
 <script>
 
 const AREAS=["北部","中部","南部"];
@@ -216,26 +197,34 @@ const TYPES=[
   "海岸","星空","絶景","猫","知人友人・親戚","その他"
 ];
 
-const el = id => document.getElementById(id);
+const el=id=>document.getElementById(id);
 
-let editIndex = null;
+let pressTimer=null;
+let selectedIndex=null;
+let editIndex=null;
 
-const state = {
+const state={
   spots: JSON.parse(localStorage.getItem("spots")) || [],
   fav: JSON.parse(localStorage.getItem("fav")) || [],
   form:{ area:"", types:[], image:"" },
-  filter:{ keyword:"", and:true, favOnly:false, area:"", types:[] }
+  filter:{
+    keyword:"",
+    area:"",
+    types:[],
+    and:true,
+    favOnly:false
+  }
 };
 
-const searchEl = el("search");
-const nameEl = el("name");
-const descEl = el("desc");
-const imageEl = el("image");
-const previewEl = el("preview");
+const searchEl=el("search");
+const nameEl=el("name");
+const descEl=el("desc");
+const imageEl=el("image");
+const previewEl=el("preview");
 
-const spotList = el("spot-list");
-const andBtn = el("andBtn");
-const favBtn = el("favBtn");
+const spotList=el("spot-list");
+const andBtn=el("andBtn");
+const favBtn=el("favBtn");
 
 init();
 
@@ -243,7 +232,6 @@ function init(){
   bind();
   createButtons();
   render();
-  updateUI();
 }
 
 /* タブ */
@@ -281,7 +269,7 @@ function bind(){
   };
 }
 
-/* ボタン生成 */
+/* タグ生成 */
 function createButtons(){
   make("area-buttons",AREAS,"area");
   make("type-buttons",TYPES,"type");
@@ -303,9 +291,7 @@ function make(id,list,type){
 /* タグ */
 function tag(type,val){
 
-  if(type==="area"){
-    state.form.area = state.form.area===val?"":val;
-  }
+  if(type==="area") state.form.area = state.form.area===val?"":val;
 
   if(type==="type"){
     state.form.types.includes(val)
@@ -313,9 +299,7 @@ function tag(type,val){
       : state.form.types.push(val);
   }
 
-  if(type==="farea"){
-    state.filter.area = state.filter.area===val?"":val;
-  }
+  if(type==="farea") state.filter.area = state.filter.area===val?"":val;
 
   if(type==="ftype"){
     state.filter.types.includes(val)
@@ -326,33 +310,19 @@ function tag(type,val){
   render();
 }
 
-/* お気に入り */
-function fav(name){
-  state.fav.includes(name)
-    ? state.fav = state.fav.filter(f=>f!==name)
-    : state.fav.push(name);
-
-  localStorage.setItem("fav",JSON.stringify(state.fav));
-  render();
-}
-
-function isFav(n){
-  return state.fav.includes(n);
-}
-
 /* 保存 */
 function saveSpot(){
 
-  const data = {
+  const data={
     name:nameEl.value,
     desc:descEl.value,
     tags:{ area:state.form.area, types:state.form.types },
     img:state.form.image
   };
 
-  if(editIndex !== null){
-    state.spots[editIndex] = data;
-    editIndex = null;
+  if(editIndex!==null){
+    state.spots[editIndex]=data;
+    editIndex=null;
   }else{
     state.spots.push(data);
   }
@@ -364,53 +334,33 @@ function saveSpot(){
   render();
 }
 
-/* 編集 */
-function edit(i){
-  const s = state.spots[i];
-  editIndex = i;
-
-  nameEl.value = s.name;
-  descEl.value = s.desc;
-  state.form.area = s.tags?.area || "";
-  state.form.types = s.tags?.types || [];
-  state.form.image = s.img || "";
-
-  if(s.img){
-    previewEl.src = s.img;
-    previewEl.style.display = "block";
-  }
-
-  switchTab("add");
+/* 長押し */
+function attachLongPress(elm,i){
+  elm.ontouchstart=()=>{
+    pressTimer=setTimeout(()=>{
+      selectedIndex=i;
+      openModal();
+    },500);
+  };
+  elm.ontouchend=()=>clearTimeout(pressTimer);
+  elm.ontouchmove=()=>clearTimeout(pressTimer);
 }
 
-/* 削除 */
-function del(i){
-  if(!confirm("削除する？")) return;
+/* 描画 */
+function render(){
 
-  const s = state.spots[i];
-  state.spots.splice(i,1);
-  state.fav = state.fav.filter(f=>f!==s.name);
+  spotList.innerHTML="";
 
-  localStorage.setItem("spots",JSON.stringify(state.spots));
-  localStorage.setItem("fav",JSON.stringify(state.fav));
+  const list = state.spots.filter(s=>{
+    if(state.filter.favOnly && !state.fav.includes(s.name)) return false;
 
-  render();
-}
+    if(state.filter.keyword &&
+      !s.name.toLowerCase().includes(state.filter.keyword.toLowerCase())) return false;
 
-/* フィルター */
-function filtered(){
-  const k = state.filter.keyword.toLowerCase();
-
-  return state.spots.filter(s=>{
-
-    if(state.filter.favOnly && !isFav(s.name)) return false;
-    if(!s.name.toLowerCase().includes(k)) return false;
-
-    if(state.filter.area && s.tags?.area !== state.filter.area) return false;
-
-    const t = s.tags?.types || [];
+    if(state.filter.area && s.tags?.area!==state.filter.area) return false;
 
     if(state.filter.types.length){
+      const t=s.tags?.types||[];
       if(state.filter.and){
         if(!state.filter.types.every(x=>t.includes(x))) return false;
       }else{
@@ -420,38 +370,25 @@ function filtered(){
 
     return true;
   });
-}
 
-/* 描画 */
-function render(){
-
-  spotList.innerHTML="";
-
-  filtered().forEach((s,i)=>{
+  list.forEach((s,i)=>{
 
     const d=document.createElement("div");
     d.className="card";
 
-    d.innerHTML=`
-      <div class="card-main">
-        ${s.img?`<img src="${s.img}">`:""}
-        <div class="card-text">
-          <h3>
-            ${s.name}
-            <button onclick="fav('${s.name}')">
-              ${isFav(s.name)?"⭐":"☆"}
-            </button>
-          </h3>
-          <div>${s.desc||""}</div>
-          <div style="font-size:12px;color:#666;">
-            ${s.tags?.area || ""} ${(s.tags?.types||[]).join(", ")}
-          </div>
-        </div>
-      </div>
+    attachLongPress(d,i);
 
-      <div class="card-actions">
-        <button onclick="edit(${i})">編集</button>
-        <button onclick="del(${i})">削除</button>
+    d.innerHTML=`
+      ${s.img?`<img src="${s.img}">`:""}
+      <div>
+        <strong>${s.name}</strong>
+        <button onclick="fav('${s.name}')">
+          ${state.fav.includes(s.name)?"⭐":"☆"}
+        </button>
+        <div>${s.desc||""}</div>
+        <div style="font-size:12px;color:#666;">
+          ${s.tags?.area||""} ${(s.tags?.types||[]).join(", ")}
+        </div>
       </div>
     `;
 
@@ -463,36 +400,72 @@ function render(){
 
 /* UI */
 function updateUI(){
-
   andBtn.classList.toggle("on",state.filter.and);
   favBtn.classList.toggle("on",state.filter.favOnly);
 
-  document.querySelectorAll(".tag-btn").forEach(b=>{
-    const t = b.innerText;
-    const parentId = b.parentElement.id;
+  document.querySelectorAll("#area-buttons .tag-btn, #type-buttons .tag-btn").forEach(b=>{
+    const t=b.innerText;
+    b.classList.toggle("active",
+      t===state.form.area || state.form.types.includes(t)
+    );
+  });
 
-    let on = false;
-
-    if(parentId==="area-buttons") on = (t===state.form.area);
-    if(parentId==="type-buttons") on = state.form.types.includes(t);
-
-    if(parentId==="filter-area") on = (t===state.filter.area);
-    if(parentId==="filter-type") on = state.filter.types.includes(t);
-
-    b.classList.toggle("active",on);
+  document.querySelectorAll("#filter-area .tag-btn, #filter-type .tag-btn").forEach(b=>{
+    const t=b.innerText;
+    b.classList.toggle("active",
+      t===state.filter.area || state.filter.types.includes(t)
+    );
   });
 }
 
-/* トグル */
-function toggleAnd(){
-  state.filter.and=!state.filter.and;
+/* その他 */
+function fav(name){
+  state.fav.includes(name)
+    ? state.fav=state.fav.filter(f=>f!==name)
+    : state.fav.push(name);
+
+  localStorage.setItem("fav",JSON.stringify(state.fav));
   render();
 }
 
-function toggleFavFilter(){
-  state.filter.favOnly=!state.filter.favOnly;
+function edit(i){
+  const s=state.spots[i];
+  editIndex=i;
+
+  nameEl.value=s.name;
+  descEl.value=s.desc;
+  state.form.area=s.tags?.area||"";
+  state.form.types=s.tags?.types||[];
+  state.form.image=s.img||"";
+
+  if(s.img){
+    previewEl.src=s.img;
+    previewEl.style.display="block";
+  }
+
+  closeModal();
+  switchTab("add");
+}
+
+function del(i){
+  if(!confirm("削除する？")) return;
+
+  const s=state.spots[i];
+  state.spots.splice(i,1);
+  state.fav=state.fav.filter(f=>f!==s.name);
+
+  localStorage.setItem("spots",JSON.stringify(state.spots));
+  localStorage.setItem("fav",JSON.stringify(state.fav));
+
+  closeModal();
   render();
 }
+
+function toggleAnd(){ state.filter.and=!state.filter.and; render(); }
+function toggleFavFilter(){ state.filter.favOnly=!state.filter.favOnly; render(); }
+
+function openModal(){ el("modal").style.display="block"; }
+function closeModal(){ el("modal").style.display="none"; }
 
 function resetForm(){
   nameEl.value="";
@@ -501,17 +474,18 @@ function resetForm(){
   state.form.types=[];
   state.form.image="";
   previewEl.style.display="none";
-  editIndex=null;
 }
 
 /* エクスポート */
 function exportData(){
-  const blob = new Blob([JSON.stringify(state,null,2)],{type:"application/json"});
-  const url = URL.createObjectURL(blob);
+  const blob=new Blob([JSON.stringify(state,null,2)],{type:"application/json"});
+  const url=URL.createObjectURL(blob);
+
   const a=document.createElement("a");
   a.href=url;
-  a.download="tanegashima.json";
+  a.download="tanegashima_spots.json";
   a.click();
+
   URL.revokeObjectURL(url);
 }
 
