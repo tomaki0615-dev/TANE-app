@@ -7,6 +7,7 @@
 
 <link rel="apple-touch-icon" sizes="180x180" href="icon.png">
 <link rel="icon" type="image/png" href="icon.png">
+
 <style>
 body{
   font-family:-apple-system, BlinkMacSystemFont;
@@ -117,7 +118,6 @@ button{
 #favBtn.on{
   background:#3b82f6;
   color:white;
-  color:#fff;
 }
 </style>
 </head>
@@ -141,6 +141,7 @@ button{
   <div class="row">
     <button id="andBtn" onclick="toggleAndMode()">☑ AND検索</button>
     <button id="favBtn" onclick="toggleFavFilter()">☆ お気に入り</button>
+    <button onclick="exportData()">📤 エクスポート</button>
   </div>
 
   <div>
@@ -185,25 +186,25 @@ const TYPES=[
   "海岸","星空","絶景","猫","知人友人・親戚","その他"
 ];
 
-const el = id => document.getElementById(id);
+const el=id=>document.getElementById(id);
 
-const searchEl = el("search");
-const nameEl = el("name");
-const descEl = el("desc");
-const imageEl = el("image");
-const previewEl = el("preview");
+const searchEl=el("search");
+const nameEl=el("name");
+const descEl=el("desc");
+const imageEl=el("image");
+const previewEl=el("preview");
 
-const spotList = el("spot-list");
-const andBtn = el("andBtn");
-const favBtn = el("favBtn");
+const spotList=el("spot-list");
+const andBtn=el("andBtn");
+const favBtn=el("favBtn");
 
-let state = {
-  spots: JSON.parse(localStorage.getItem("spots")) || [],
-  fav: JSON.parse(localStorage.getItem("fav")) || [],
+let state={
+  spots:JSON.parse(localStorage.getItem("spots"))||[],
+  fav:JSON.parse(localStorage.getItem("fav"))||[],
 
   editIndex:null,
 
-  form:{ area:"", types:[], image:"" },
+  form:{area:"",types:[],image:""},
 
   filter:{
     area:"",
@@ -314,42 +315,15 @@ function fav(name){
 
 function isFav(n){ return state.fav.includes(n); }
 
-/* 編集 */
-function edit(i){
-  const s=state.spots[i];
-  state.editIndex=i;
-
-  nameEl.value=s.name;
-  descEl.value=s.desc;
-
-  state.form.area=s.tags.area||"";
-  state.form.types=s.tags.types||[];
-  state.form.image=s.img||"";
-
-  if(s.img){
-    previewEl.src=s.img;
-    previewEl.style.display="block";
-  }
-
-  switchTab("add");
-}
-
 /* 保存 */
 function saveSpot(){
 
-  const d={
+  state.spots.push({
     name:nameEl.value,
     desc:descEl.value,
     tags:{ area:state.form.area, types:state.form.types },
     img:state.form.image
-  };
-
-  if(state.editIndex!==null){
-    state.spots[state.editIndex]=d;
-    state.editIndex=null;
-  }else{
-    state.spots.push(d);
-  }
+  });
 
   localStorage.setItem("spots",JSON.stringify(state.spots));
 
@@ -367,7 +341,6 @@ function saveSpot(){
 /* 削除 */
 function del(i){
   const s=state.spots[i];
-
   if(!confirm("削除する？")) return;
 
   state.spots.splice(i,1);
@@ -432,7 +405,6 @@ function render(){
           ${getA(s)} ${(getT(s)).join(", ")}
         </div>
 
-        <button onclick="edit(${i})">編集</button>
         <button onclick="del(${i})">削除</button>
       </div>
     `;
@@ -464,15 +436,41 @@ function updateUI(){
   });
 }
 
-/* toggle */
+/* AND */
 function toggleAndMode(){
   state.filter.and=!state.filter.and;
   render();
 }
 
+/* お気に入りフィルター */
 function toggleFavFilter(){
   state.filter.favOnly=!state.filter.favOnly;
   render();
+}
+
+/* 📤 エクスポート */
+function exportData(){
+
+  const data = {
+    version: 1,
+    exportedAt: new Date().toISOString(),
+    spots: state.spots,
+    fav: state.fav
+  };
+
+  const blob = new Blob(
+    [JSON.stringify(data, null, 2)],
+    { type: "application/json" }
+  );
+
+  const url = URL.createObjectURL(blob);
+
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "tanegashima_spots.json";
+  a.click();
+
+  URL.revokeObjectURL(url);
 }
 
 </script>
