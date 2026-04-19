@@ -13,7 +13,7 @@ body{
   font-family:-apple-system, BlinkMacSystemFont;
   margin:0;
   background:#f9fafb;
-  font-size:16px;
+  font-size:17px;
 }
 
 header{
@@ -21,6 +21,7 @@ header{
   top:0;
   width:100%;
   background:rgba(255,255,255,0.95);
+  backdrop-filter:blur(10px);
   border-bottom:1px solid #ddd;
   padding:10px;
   text-align:center;
@@ -39,7 +40,7 @@ header{
 
 .tab{
   flex:1;
-  padding:10px;
+  padding:12px;
   text-align:center;
 }
 
@@ -49,31 +50,36 @@ header{
 }
 
 .container{
-  padding:100px 10px 20px;
+  padding:110px 10px 20px;
 }
 
 input, textarea{
   width:100%;
-  padding:12px;
-  border-radius:10px;
+  padding:14px;
+  border-radius:12px;
   border:1px solid #ddd;
   margin-bottom:10px;
 }
 
-button{
-  padding:8px;
-  border-radius:10px;
-  border:none;
-  background:#e5e7eb;
-}
-
-.row{
+.card{
   display:flex;
-  gap:8px;
+  gap:10px;
+  background:white;
+  padding:10px;
   margin-bottom:10px;
+  border-radius:14px;
 }
 
-.row button{ flex:1; }
+.card img{
+  width:90px;
+  height:70px;
+  object-fit:cover;
+  border-radius:10px;
+}
+
+.card-body{
+  flex:1;
+}
 
 .tag-btn{
   padding:8px 12px;
@@ -88,40 +94,27 @@ button{
   color:white;
 }
 
-.card{
-  display:flex;
-  gap:8px;
-  background:white;
-  padding:10px;
-  margin-bottom:10px;
-  border-radius:12px;
-}
-
-.card img{
-  width:90px;
-  height:70px;
-  object-fit:cover;
-  border-radius:8px;
-}
-
 .page{ display:none; }
 .page.active{ display:block; }
 
-.on{
-  background:#3b82f6 !important;
-  color:white !important;
+.menu{
+  position:fixed;
+  bottom:20px;
+  left:50%;
+  transform:translateX(-50%);
+  background:white;
+  border-radius:16px;
+  box-shadow:0 4px 12px rgba(0,0,0,0.15);
+  padding:10px;
+  display:none;
 }
 
-/* モーダル */
-#modal{
-  position:fixed;
-  bottom:0;
+.menu button{
+  display:block;
   width:100%;
-  background:white;
-  border-top:1px solid #ddd;
-  padding:20px;
-  display:none;
-  z-index:2000;
+  padding:10px;
+  border:none;
+  background:none;
 }
 </style>
 </head>
@@ -137,357 +130,143 @@ button{
 
 <div class="container">
 
-<!-- 検索 -->
 <div id="searchPage" class="page active">
-
   <input id="search" placeholder="検索">
-
-  <div class="row">
-    <button id="andBtn" onclick="toggleAnd()">AND</button>
-    <button id="favBtn" onclick="toggleFavFilter()">お気に入り</button>
-    <button onclick="exportData()">エクスポート</button>
-  </div>
-
-  <div>
-    <div>エリア</div>
-    <div id="filter-area"></div>
-
-    <div>種類タグ</div>
-    <div id="filter-type"></div>
-  </div>
-
   <div id="spot-list"></div>
 </div>
 
-<!-- 追加 -->
 <div id="addPage" class="page">
-
   <input id="name" placeholder="名前">
   <textarea id="desc" placeholder="説明"></textarea>
-
-  <div>エリア</div>
-  <div id="area-buttons"></div>
-
-  <div>種類タグ</div>
-  <div id="type-buttons"></div>
 
   <input type="file" id="image">
   <img id="preview" style="display:none;width:100%;border-radius:10px;">
 
   <button onclick="saveSpot()">保存</button>
-
 </div>
 
 </div>
 
-<!-- 長押しメニュー -->
-<div id="modal">
-  <button onclick="edit(selectedIndex)">編集</button>
-  <button onclick="del(selectedIndex)">削除</button>
-  <button onclick="closeModal()">キャンセル</button>
+<div id="menu" class="menu">
+  <button onclick="editSpot()">編集</button>
+  <button onclick="deleteSpot()">削除</button>
 </div>
 
 <script>
 
-const AREAS=["北部","中部","南部"];
-
-const TYPES=[
-  "カフェ","レストラン","土産","個人商店","無人販売",
-  "レジャー","温泉","神社","工場","博物館","公園",
-  "海岸","星空","絶景","猫","知人友人・親戚","その他"
-];
-
-const el=id=>document.getElementById(id);
-
-let pressTimer=null;
-let selectedIndex=null;
-let editIndex=null;
-
-const state={
-  spots: JSON.parse(localStorage.getItem("spots")) || [],
-  fav: JSON.parse(localStorage.getItem("fav")) || [],
-  form:{ area:"", types:[], image:"" },
-  filter:{
-    keyword:"",
-    area:"",
-    types:[],
-    and:true,
-    favOnly:false
-  }
+/* ===== デフォルトデータ ===== */
+const DEFAULT_DATA = {
+  spots: [
+    {name:"種子島宇宙センター",desc:"",tags:{area:"南部",types:["博物館"]},img:""},
+    {name:"風の街",desc:"ポニー、ヤギが飼育されている",tags:{area:"中部",types:["公園","レストラン","猫"]},img:""},
+    {name:"浦田海水浴場",desc:"",tags:{area:"北部",types:["海岸","絶景"]},img:""},
+    {name:"千座の岩屋",desc:"干潮時にしか入れない",tags:{area:"中部",types:["絶景","海岸"]},img:""},
+    {name:"門倉岬",desc:"鉄砲伝来の海岸",tags:{area:"南部",types:["絶景","神社","海岸"]},img:""}
+  ],
+  fav:["浦田海水浴場","千座の岩屋"]
 };
 
-const searchEl=el("search");
-const nameEl=el("name");
-const descEl=el("desc");
-const imageEl=el("image");
-const previewEl=el("preview");
-
-const spotList=el("spot-list");
-const andBtn=el("andBtn");
-const favBtn=el("favBtn");
-
-init();
-
-function init(){
-  bind();
-  createButtons();
-  render();
+/* 初回だけ投入 */
+if(!localStorage.getItem("initialized")){
+  localStorage.setItem("spots",JSON.stringify(DEFAULT_DATA.spots));
+  localStorage.setItem("fav",JSON.stringify(DEFAULT_DATA.fav));
+  localStorage.setItem("initialized","true");
 }
 
-/* タブ */
-function switchTab(t){
-  document.querySelectorAll(".page").forEach(p=>p.classList.remove("active"));
-  document.querySelectorAll(".tab").forEach(t=>t.classList.remove("active"));
+/* ===== 状態 ===== */
+const state={
+  spots:JSON.parse(localStorage.getItem("spots"))||[],
+  fav:JSON.parse(localStorage.getItem("fav"))||[],
+  selectedIndex:null
+};
 
-  if(t==="search"){
-    el("searchPage").classList.add("active");
-    document.querySelectorAll(".tab")[0].classList.add("active");
-  }else{
-    el("addPage").classList.add("active");
-    document.querySelectorAll(".tab")[1].classList.add("active");
-  }
-}
+const el=id=>document.getElementById(id);
+const list=el("spot-list");
 
-/* イベント */
-function bind(){
-  searchEl.oninput=e=>{
-    state.filter.keyword=e.target.value;
-    render();
-  };
+/* ===== 描画 ===== */
+function render(){
+  list.innerHTML="";
+  state.spots.forEach((s,i)=>{
+    const d=document.createElement("div");
+    d.className="card";
 
-  imageEl.onchange=e=>{
-    const f=e.target.files[0];
-    if(!f) return;
+    d.innerHTML=`
+      ${s.img?`<img src="${s.img}">`:""}
+      <div class="card-body">
+        <b>${s.name}</b>
+        <div>${s.desc||""}</div>
+      </div>
+    `;
 
-    const r=new FileReader();
-    r.onload=()=>{
-      state.form.image=r.result;
-      previewEl.src=r.result;
-      previewEl.style.display="block";
+    d.oncontextmenu=(e)=>{
+      e.preventDefault();
+      openMenu(i);
     };
-    r.readAsDataURL(f);
-  };
-}
 
-/* タグ生成 */
-function createButtons(){
-  make("area-buttons",AREAS,"area");
-  make("type-buttons",TYPES,"type");
-  make("filter-area",AREAS,"farea");
-  make("filter-type",TYPES,"ftype");
-}
+    d.ontouchstart=(e)=>{
+      pressTimer=setTimeout(()=>openMenu(i),600);
+    };
+    d.ontouchend=()=>clearTimeout(pressTimer);
 
-function make(id,list,type){
-  const t=el(id);
-  list.forEach(x=>{
-    const b=document.createElement("span");
-    b.className="tag-btn";
-    b.innerText=x;
-    b.onclick=()=>tag(type,x);
-    t.appendChild(b);
+    list.appendChild(d);
   });
 }
 
-/* タグ */
-function tag(type,val){
-
-  if(type==="area") state.form.area = state.form.area===val?"":val;
-
-  if(type==="type"){
-    state.form.types.includes(val)
-      ? state.form.types=state.form.types.filter(t=>t!==val)
-      : state.form.types.push(val);
-  }
-
-  if(type==="farea") state.filter.area = state.filter.area===val?"":val;
-
-  if(type==="ftype"){
-    state.filter.types.includes(val)
-      ? state.filter.types=state.filter.types.filter(t=>t!==val)
-      : state.filter.types.push(val);
-  }
-
-  render();
+/* ===== 長押しメニュー ===== */
+function openMenu(i){
+  state.selectedIndex=i;
+  el("menu").style.display="block";
 }
 
-/* 保存 */
-function saveSpot(){
+function editSpot(){
+  const s=state.spots[state.selectedIndex];
+  el("name").value=s.name;
+  el("desc").value=s.desc;
+  switchTab("add");
+  closeMenu();
+}
 
+function deleteSpot(){
+  state.spots.splice(state.selectedIndex,1);
+  localStorage.setItem("spots",JSON.stringify(state.spots));
+  render();
+  closeMenu();
+}
+
+function closeMenu(){
+  el("menu").style.display="none";
+}
+
+/* ===== 保存 ===== */
+function saveSpot(){
   const data={
-    name:nameEl.value,
-    desc:descEl.value,
-    tags:{ area:state.form.area, types:state.form.types },
-    img:state.form.image
+    name:el("name").value,
+    desc:el("desc").value,
+    tags:{},
+    img:""
   };
 
-  if(editIndex!==null){
-    state.spots[editIndex]=data;
-    editIndex=null;
-  }else{
-    state.spots.push(data);
-  }
-
+  state.spots.push(data);
   localStorage.setItem("spots",JSON.stringify(state.spots));
 
-  resetForm();
+  el("name").value="";
+  el("desc").value="";
   switchTab("search");
   render();
 }
 
-/* 長押し */
-function attachLongPress(elm,i){
-  elm.ontouchstart=()=>{
-    pressTimer=setTimeout(()=>{
-      selectedIndex=i;
-      openModal();
-    },500);
-  };
-  elm.ontouchend=()=>clearTimeout(pressTimer);
-  elm.ontouchmove=()=>clearTimeout(pressTimer);
-}
-
-/* 描画 */
-function render(){
-
-  spotList.innerHTML="";
-
-  const list = state.spots.filter(s=>{
-    if(state.filter.favOnly && !state.fav.includes(s.name)) return false;
-
-    if(state.filter.keyword &&
-      !s.name.toLowerCase().includes(state.filter.keyword.toLowerCase())) return false;
-
-    if(state.filter.area && s.tags?.area!==state.filter.area) return false;
-
-    if(state.filter.types.length){
-      const t=s.tags?.types||[];
-      if(state.filter.and){
-        if(!state.filter.types.every(x=>t.includes(x))) return false;
-      }else{
-        if(!state.filter.types.some(x=>t.includes(x))) return false;
-      }
-    }
-
-    return true;
-  });
-
-  list.forEach((s,i)=>{
-
-    const d=document.createElement("div");
-    d.className="card";
-
-    attachLongPress(d,i);
-
-    d.innerHTML=`
-      ${s.img?`<img src="${s.img}">`:""}
-      <div>
-        <strong>${s.name}</strong>
-        <button onclick="fav('${s.name}')">
-          ${state.fav.includes(s.name)?"⭐":"☆"}
-        </button>
-        <div>${s.desc||""}</div>
-        <div style="font-size:12px;color:#666;">
-          ${s.tags?.area||""} ${(s.tags?.types||[]).join(", ")}
-        </div>
-      </div>
-    `;
-
-    spotList.appendChild(d);
-  });
-
-  updateUI();
-}
-
-/* UI */
-function updateUI(){
-  andBtn.classList.toggle("on",state.filter.and);
-  favBtn.classList.toggle("on",state.filter.favOnly);
-
-  document.querySelectorAll("#area-buttons .tag-btn, #type-buttons .tag-btn").forEach(b=>{
-    const t=b.innerText;
-    b.classList.toggle("active",
-      t===state.form.area || state.form.types.includes(t)
-    );
-  });
-
-  document.querySelectorAll("#filter-area .tag-btn, #filter-type .tag-btn").forEach(b=>{
-    const t=b.innerText;
-    b.classList.toggle("active",
-      t===state.filter.area || state.filter.types.includes(t)
-    );
-  });
-}
-
-/* その他 */
-function fav(name){
-  state.fav.includes(name)
-    ? state.fav=state.fav.filter(f=>f!==name)
-    : state.fav.push(name);
-
-  localStorage.setItem("fav",JSON.stringify(state.fav));
-  render();
-}
-
-function edit(i){
-  const s=state.spots[i];
-  editIndex=i;
-
-  nameEl.value=s.name;
-  descEl.value=s.desc;
-  state.form.area=s.tags?.area||"";
-  state.form.types=s.tags?.types||[];
-  state.form.image=s.img||"";
-
-  if(s.img){
-    previewEl.src=s.img;
-    previewEl.style.display="block";
+/* ===== タブ ===== */
+function switchTab(t){
+  document.querySelectorAll(".page").forEach(p=>p.classList.remove("active"));
+  if(t==="search"){
+    el("searchPage").classList.add("active");
+  }else{
+    el("addPage").classList.add("active");
   }
-
-  closeModal();
-  switchTab("add");
 }
 
-function del(i){
-  if(!confirm("削除する？")) return;
-
-  const s=state.spots[i];
-  state.spots.splice(i,1);
-  state.fav=state.fav.filter(f=>f!==s.name);
-
-  localStorage.setItem("spots",JSON.stringify(state.spots));
-  localStorage.setItem("fav",JSON.stringify(state.fav));
-
-  closeModal();
-  render();
-}
-
-function toggleAnd(){ state.filter.and=!state.filter.and; render(); }
-function toggleFavFilter(){ state.filter.favOnly=!state.filter.favOnly; render(); }
-
-function openModal(){ el("modal").style.display="block"; }
-function closeModal(){ el("modal").style.display="none"; }
-
-function resetForm(){
-  nameEl.value="";
-  descEl.value="";
-  state.form.area="";
-  state.form.types=[];
-  state.form.image="";
-  previewEl.style.display="none";
-}
-
-/* エクスポート */
-function exportData(){
-  const blob=new Blob([JSON.stringify(state,null,2)],{type:"application/json"});
-  const url=URL.createObjectURL(blob);
-
-  const a=document.createElement("a");
-  a.href=url;
-  a.download="tanegashima_spots.json";
-  a.click();
-
-  URL.revokeObjectURL(url);
-}
+/* 初期描画 */
+render();
 
 </script>
 
