@@ -326,7 +326,8 @@ function saveSpot(){
 
 /* 🔥 エクスポート（完全修正版） */
 function exportData(){
-
+console.table(state.spots);
+  
   // 👇 ここが核心（壊れ防止）
   const safeSpots = (state.spots || []).filter(s =>
     s &&
