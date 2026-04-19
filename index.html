@@ -1,101 +1,203 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>種子島の見どころ</title>
+
+<style>
+body{
+  font-family:-apple-system, BlinkMacSystemFont;
+  margin:0;
+  background:#f9fafb;
+  font-size:17px;
+}
+
+header{
+  position:fixed;
+  top:0;
+  width:100%;
+  background:rgba(255,255,255,0.95);
+  backdrop-filter:blur(10px);
+  border-bottom:1px solid #ddd;
+  padding:10px;
+  text-align:center;
+  font-weight:bold;
+  z-index:1000;
+}
+
+.container{ padding:70px 10px 20px; }
+
+input{
+  width:100%;
+  padding:12px;
+  margin-bottom:10px;
+  border-radius:10px;
+  border:1px solid #ddd;
+}
+
+.card{
+  background:#fff;
+  padding:12px;
+  margin-bottom:10px;
+  border-radius:12px;
+  box-shadow:0 2px 6px rgba(0,0,0,0.05);
+}
+
+button{
+  padding:8px 10px;
+  border:none;
+  border-radius:8px;
+  cursor:pointer;
+  background:#e5e7eb;
+}
+
+.tag{
+  display:inline-block;
+  padding:6px 10px;
+  margin:3px;
+  border-radius:999px;
+  background:#eee;
+  cursor:pointer;
+}
+
+.tag.active{
+  background:#3b82f6;
+  color:#fff;
+}
+
+.row{ display:flex; gap:8px; margin-bottom:10px; }
+
+.row button{ flex:1; }
+
+.error-box{
+  color:red;
+  white-space:pre-wrap;
+}
+</style>
+</head>
+
+<body>
+
+<header>🌴 種子島の見どころ</header>
+
+<div class="container">
+
+<input id="search" placeholder="検索">
+
+<div class="row">
+  <button id="andBtn" onclick="toggleAnd()">AND</button>
+  <button id="favBtn" onclick="toggleFav()">お気に入り</button>
+</div>
+
+<div id="tags"></div>
+
+<div id="list"></div>
+
+</div>
+
 <script>
-const AREAS=["北部","中部","南部"];
-const TYPES=["カフェ","レストラン","土産","個人商店","無人販売","レジャー","温泉","神社","工場","博物館","公園","海岸","星空","絶景","猫","知人友人・親戚","その他"];
+
+/* 🧯 真っ白防止 */
+window.onerror = function(msg,src,line){
+  document.body.innerHTML =
+  "<div class='error-box'>JSエラー👇\n\n"
+  + msg + "\nline:" + line + "</div>";
+};
+
+/* データ */
+const TAGS = ["カフェ","レストラン","土産","温泉","神社","工場","博物館","公園","海岸","星空","絶景"];
+
+let state = {
+  spots: JSON.parse(localStorage.getItem("spots")||"[]"),
+  fav: JSON.parse(localStorage.getItem("fav")||"[]"),
+  keyword:"",
+  and:true,
+  favOnly:false,
+  selectedTag:""
+};
 
 const $ = id => document.getElementById(id);
 
-let state={
-  spots: JSON.parse(localStorage.getItem("spots")||"[]"),
-  fav: JSON.parse(localStorage.getItem("fav")||"[]"),
-  form:{area:"",types:[],img:""},
-  filter:{k:"",fav:false}
-};
-
+/* 初期化 */
 init();
 
 function init(){
   bind();
-  safeMake();
+  renderTags();
   render();
 }
 
-/* 🔐 安全DOM生成 */
-function safeMake(){
-
-  const areaBox=$("area-buttons");
-  const typeBox=$("type-buttons");
-
-  if(areaBox) make(areaBox,AREAS,"area");
-  if(typeBox) make(typeBox,TYPES,"type");
-}
-
-/* ボタン生成 */
-function make(target,list,type){
-
-  target.innerHTML="";
-
-  list.forEach(v=>{
-    const b=document.createElement("span");
-    b.className="tag-btn";
-    b.textContent=v;
-    b.onclick=()=>tag(type,v);
-    target.appendChild(b);
-  });
+/* 入力 */
+function bind(){
+  $("search").oninput = e=>{
+    state.keyword = e.target.value;
+    render();
+  };
 }
 
 /* タグ */
-function tag(type,v){
-  if(type==="area"){
-    state.form.area = state.form.area===v?"":v;
-  }
+function renderTags(){
+  const box = $("tags");
+  box.innerHTML="";
 
-  if(type==="type"){
-    state.form.types.includes(v)
-      ? state.form.types=state.form.types.filter(x=>x!==v)
-      : state.form.types.push(v);
-  }
+  TAGS.forEach(t=>{
+    const el=document.createElement("span");
+    el.className="tag";
+    el.textContent=t;
 
+    el.onclick=()=>{
+      state.selectedTag = state.selectedTag===t ? "" : t;
+      render();
+      renderTags();
+    };
+
+    if(state.selectedTag===t) el.classList.add("active");
+
+    box.appendChild(el);
+  });
+}
+
+/* お気に入り */
+function toggleFav(){
+  state.favOnly = !state.favOnly;
+  $("favBtn").style.background = state.favOnly ? "#3b82f6" : "#e5e7eb";
   render();
 }
 
-/* 保存 */
-function save(){
-  const name=document.getElementById("name");
-  const desc=document.getElementById("desc");
-
-  state.spots.push({
-    id:Date.now(),
-    name:name?.value||"",
-    desc:desc?.value||"",
-    area:state.form.area,
-    types:state.form.types,
-    img:state.form.img
-  });
-
-  localStorage.setItem("spots",JSON.stringify(state.spots));
-
-  state.form={area:"",types:[],img:""};
-
-  if(name) name.value="";
-  if(desc) desc.value="";
-
-  render();
+/* AND */
+function toggleAnd(){
+  state.and = !state.and;
+  $("andBtn").style.background = state.and ? "#3b82f6" : "#e5e7eb";
 }
 
 /* フィルター */
 function filtered(){
   return state.spots.filter(s=>{
-    if(state.filter.k && !s.name.includes(state.filter.k)) return false;
+
+    if(state.keyword && !s.name.includes(state.keyword)) return false;
+
+    if(state.favOnly && !state.fav.includes(s.name)) return false;
+
+    if(state.selectedTag && !(s.tags||[]).includes(state.selectedTag)) return false;
+
     return true;
   });
 }
 
+/* お気に入り */
+function fav(name){
+  state.fav.includes(name)
+    ? state.fav = state.fav.filter(x=>x!==name)
+    : state.fav.push(name);
+
+  localStorage.setItem("fav",JSON.stringify(state.fav));
+  render();
+}
+
 /* 描画 */
 function render(){
-
-  const box=$("spot-list");
-  if(!box) return;
-
+  const box = $("list");
   box.innerHTML="";
 
   filtered().forEach(s=>{
@@ -104,29 +206,27 @@ function render(){
     div.className="card";
 
     div.innerHTML=`
-      ${s.img?`<img src="${s.img}">`:""}
-      <div>
-        <h3>${s.name}</h3>
-        <div>${s.desc||""}</div>
-        <small>${s.area||""} ${(s.types||[]).join(", ")}</small>
-      </div>
+      <b>${s.name}</b>
+      <button onclick="fav('${s.name}')">
+        ${state.fav.includes(s.name) ? "⭐" : "☆"}
+      </button>
+      <div>${s.desc||""}</div>
+      <small>${(s.tags||[]).join(", ")}</small>
     `;
 
     box.appendChild(div);
   });
 }
 
-/* bind */
-function bind(){
-
-  const search=document.getElementById("search");
-
-  if(search){
-    search.oninput=e=>{
-      state.filter.k=e.target.value;
-      render();
-    };
-  }
+/* ダミー初期データ（空でもOK） */
+if(state.spots.length===0){
+  state.spots = [
+    {name:"千座の岩屋", desc:"絶景スポット", tags:["海岸","絶景"]},
+    {name:"宇宙センター", desc:"ロケット発射基地", tags:["工場","絶景"]}
+  ];
 }
 
 </script>
+
+</body>
+</html>
