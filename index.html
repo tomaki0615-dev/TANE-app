@@ -62,6 +62,7 @@ input, textarea{
   margin-bottom:10px;
 }
 
+/* ボタン */
 button{
   padding:6px 10px;
   border-radius:8px;
@@ -71,7 +72,7 @@ button{
   font-size:14px;
 }
 
-/* ===== カードUI改善 ===== */
+/* カード */
 .card{
   display:flex;
   justify-content:space-between;
@@ -105,7 +106,6 @@ button{
   font-size:13px;
 }
 
-/* 👉 右側ボタン */
 .card-actions{
   display:flex;
   flex-direction:column;
@@ -113,6 +113,7 @@ button{
   margin-left:8px;
 }
 
+/* タグ */
 .tag-btn{
   padding:8px 12px;
   margin:4px;
@@ -125,6 +126,12 @@ button{
 .tag-btn.active{
   background:#3b82f6;
   color:white;
+}
+
+/* 検索タグは色変える */
+#filter-area .tag-btn.active,
+#filter-type .tag-btn.active{
+  background:#60a5fa;
 }
 
 .row{
@@ -217,7 +224,7 @@ const state = {
   spots: JSON.parse(localStorage.getItem("spots")) || [],
   fav: JSON.parse(localStorage.getItem("fav")) || [],
   form:{ area:"", types:[], image:"" },
-  filter:{ keyword:"", and:true, favOnly:false }
+  filter:{ keyword:"", and:true, favOnly:false, area:"", types:[] }
 };
 
 const searchEl = el("search");
@@ -278,6 +285,8 @@ function bind(){
 function createButtons(){
   make("area-buttons",AREAS,"area");
   make("type-buttons",TYPES,"type");
+  make("filter-area",AREAS,"farea");
+  make("filter-type",TYPES,"ftype");
 }
 
 function make(id,list,type){
@@ -294,7 +303,9 @@ function make(id,list,type){
 /* タグ */
 function tag(type,val){
 
-  if(type==="area") state.form.area = state.form.area===val?"":val;
+  if(type==="area"){
+    state.form.area = state.form.area===val?"":val;
+  }
 
   if(type==="type"){
     state.form.types.includes(val)
@@ -302,7 +313,31 @@ function tag(type,val){
       : state.form.types.push(val);
   }
 
+  if(type==="farea"){
+    state.filter.area = state.filter.area===val?"":val;
+  }
+
+  if(type==="ftype"){
+    state.filter.types.includes(val)
+      ? state.filter.types=state.filter.types.filter(t=>t!==val)
+      : state.filter.types.push(val);
+  }
+
   render();
+}
+
+/* お気に入り */
+function fav(name){
+  state.fav.includes(name)
+    ? state.fav = state.fav.filter(f=>f!==name)
+    : state.fav.push(name);
+
+  localStorage.setItem("fav",JSON.stringify(state.fav));
+  render();
+}
+
+function isFav(n){
+  return state.fav.includes(n);
 }
 
 /* 保存 */
@@ -362,29 +397,29 @@ function del(i){
   render();
 }
 
-/* お気に入り */
-function fav(name){
-  state.fav.includes(name)
-    ? state.fav = state.fav.filter(f=>f!==name)
-    : state.fav.push(name);
+/* フィルター */
+function filtered(){
+  const k = state.filter.keyword.toLowerCase();
 
-  localStorage.setItem("fav",JSON.stringify(state.fav));
-  render();
-}
+  return state.spots.filter(s=>{
 
-function isFav(n){
-  return state.fav.includes(n);
-}
+    if(state.filter.favOnly && !isFav(s.name)) return false;
+    if(!s.name.toLowerCase().includes(k)) return false;
 
-/* エクスポート */
-function exportData(){
-  const blob = new Blob([JSON.stringify(state,null,2)],{type:"application/json"});
-  const url = URL.createObjectURL(blob);
-  const a=document.createElement("a");
-  a.href=url;
-  a.download="tanegashima.json";
-  a.click();
-  URL.revokeObjectURL(url);
+    if(state.filter.area && s.tags?.area !== state.filter.area) return false;
+
+    const t = s.tags?.types || [];
+
+    if(state.filter.types.length){
+      if(state.filter.and){
+        if(!state.filter.types.every(x=>t.includes(x))) return false;
+      }else{
+        if(!state.filter.types.some(x=>t.includes(x))) return false;
+      }
+    }
+
+    return true;
+  });
 }
 
 /* 描画 */
@@ -392,7 +427,7 @@ function render(){
 
   spotList.innerHTML="";
 
-  state.spots.forEach((s,i)=>{
+  filtered().forEach((s,i)=>{
 
     const d=document.createElement("div");
     d.className="card";
@@ -428,12 +463,36 @@ function render(){
 
 /* UI */
 function updateUI(){
+
   andBtn.classList.toggle("on",state.filter.and);
   favBtn.classList.toggle("on",state.filter.favOnly);
+
+  document.querySelectorAll(".tag-btn").forEach(b=>{
+    const t = b.innerText;
+    const parentId = b.parentElement.id;
+
+    let on = false;
+
+    if(parentId==="area-buttons") on = (t===state.form.area);
+    if(parentId==="type-buttons") on = state.form.types.includes(t);
+
+    if(parentId==="filter-area") on = (t===state.filter.area);
+    if(parentId==="filter-type") on = state.filter.types.includes(t);
+
+    b.classList.toggle("active",on);
+  });
 }
 
-function toggleAnd(){ state.filter.and=!state.filter.and; }
-function toggleFavFilter(){ state.filter.favOnly=!state.filter.favOnly; }
+/* トグル */
+function toggleAnd(){
+  state.filter.and=!state.filter.and;
+  render();
+}
+
+function toggleFavFilter(){
+  state.filter.favOnly=!state.filter.favOnly;
+  render();
+}
 
 function resetForm(){
   nameEl.value="";
@@ -443,6 +502,17 @@ function resetForm(){
   state.form.image="";
   previewEl.style.display="none";
   editIndex=null;
+}
+
+/* エクスポート */
+function exportData(){
+  const blob = new Blob([JSON.stringify(state,null,2)],{type:"application/json"});
+  const url = URL.createObjectURL(blob);
+  const a=document.createElement("a");
+  a.href=url;
+  a.download="tanegashima.json";
+  a.click();
+  URL.revokeObjectURL(url);
 }
 
 </script>
