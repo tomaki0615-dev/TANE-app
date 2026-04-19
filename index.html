@@ -145,7 +145,6 @@ button{
   <div class="row">
     <button id="andBtn" onclick="toggleAnd()">AND</button>
     <button id="favBtn" onclick="toggleFavFilter()">お気に入り</button>
-    <button onclick="exportData()">エクスポート</button>
   </div>
 
   <div>
@@ -474,19 +473,6 @@ function resetForm(){
   state.form.types=[];
   state.form.image="";
   previewEl.style.display="none";
-}
-
-/* エクスポート */
-function exportData(){
-  const blob=new Blob([JSON.stringify(state,null,2)],{type:"application/json"});
-  const url=URL.createObjectURL(blob);
-
-  const a=document.createElement("a");
-  a.href=url;
-  a.download="tanegashima_spots.json";
-  a.click();
-
-  URL.revokeObjectURL(url);
 }
 
 </script>
