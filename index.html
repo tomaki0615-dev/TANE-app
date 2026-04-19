@@ -56,38 +56,65 @@ header{
 
 input, textarea{
   width:100%;
-  padding:14px;
+  padding:12px;
   border-radius:12px;
   border:1px solid #ddd;
   margin-bottom:10px;
 }
 
 button{
-  padding:8px;
-  border-radius:10px;
+  padding:6px 10px;
+  border-radius:8px;
   border:none;
   background:#e5e7eb;
   cursor:pointer;
+  font-size:14px;
 }
 
+/* ===== カードUI改善 ===== */
 .card{
   display:flex;
-  gap:10px;
+  justify-content:space-between;
+  align-items:flex-start;
   background:white;
-  padding:12px;
-  margin-bottom:12px;
-  border-radius:16px;
+  padding:10px;
+  margin-bottom:10px;
+  border-radius:14px;
+  box-shadow:0 2px 6px rgba(0,0,0,0.05);
+}
+
+.card-main{
+  display:flex;
+  gap:10px;
+  flex:1;
 }
 
 .card img{
-  width:100px;
-  height:80px;
+  width:90px;
+  height:70px;
   object-fit:cover;
   border-radius:10px;
 }
 
+.card-text h3{
+  margin:0;
+  font-size:16px;
+}
+
+.card-text div{
+  font-size:13px;
+}
+
+/* 👉 右側ボタン */
+.card-actions{
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+  margin-left:8px;
+}
+
 .tag-btn{
-  padding:10px 14px;
+  padding:8px 12px;
   margin:4px;
   border-radius:20px;
   background:#eee;
@@ -174,7 +201,6 @@ button{
 
 <script>
 
-/* データ */
 const AREAS=["北部","中部","南部"];
 
 const TYPES=[
@@ -191,16 +217,9 @@ const state = {
   spots: JSON.parse(localStorage.getItem("spots")) || [],
   fav: JSON.parse(localStorage.getItem("fav")) || [],
   form:{ area:"", types:[], image:"" },
-  filter:{
-    keyword:"",
-    and:true,
-    favOnly:false,
-    area:"",
-    types:[]
-  }
+  filter:{ keyword:"", and:true, favOnly:false }
 };
 
-/* DOM */
 const searchEl = el("search");
 const nameEl = el("name");
 const descEl = el("desc");
@@ -211,7 +230,6 @@ const spotList = el("spot-list");
 const andBtn = el("andBtn");
 const favBtn = el("favBtn");
 
-/* 初期化 */
 init();
 
 function init(){
@@ -260,8 +278,6 @@ function bind(){
 function createButtons(){
   make("area-buttons",AREAS,"area");
   make("type-buttons",TYPES,"type");
-  make("filter-area",AREAS,"farea");
-  make("filter-type",TYPES,"ftype");
 }
 
 function make(id,list,type){
@@ -278,9 +294,7 @@ function make(id,list,type){
 /* タグ */
 function tag(type,val){
 
-  if(type==="area"){
-    state.form.area = state.form.area===val?"":val;
-  }
+  if(type==="area") state.form.area = state.form.area===val?"":val;
 
   if(type==="type"){
     state.form.types.includes(val)
@@ -288,23 +302,11 @@ function tag(type,val){
       : state.form.types.push(val);
   }
 
-  if(type==="farea"){
-    state.filter.area = state.filter.area===val?"":val;
-  }
-
-  if(type==="ftype"){
-    state.filter.types.includes(val)
-      ? state.filter.types=state.filter.types.filter(t=>t!==val)
-      : state.filter.types.push(val);
-  }
-
   render();
 }
 
 /* 保存 */
 function saveSpot(){
-
-  if(!nameEl.value.trim()) return alert("名前必須");
 
   const data = {
     name:nameEl.value,
@@ -376,21 +378,12 @@ function isFav(n){
 
 /* エクスポート */
 function exportData(){
-
-  const data = {
-    version:1,
-    spots: state.spots,
-    fav: state.fav
-  };
-
-  const blob = new Blob([JSON.stringify(data,null,2)],{type:"application/json"});
+  const blob = new Blob([JSON.stringify(state,null,2)],{type:"application/json"});
   const url = URL.createObjectURL(blob);
-
   const a=document.createElement("a");
   a.href=url;
-  a.download="tanegashima_spots.json";
+  a.download="tanegashima.json";
   a.click();
-
   URL.revokeObjectURL(url);
 }
 
@@ -399,48 +392,29 @@ function render(){
 
   spotList.innerHTML="";
 
-  const list = state.spots.filter(s=>{
-
-    if(state.filter.keyword &&
-       !s.name.includes(state.filter.keyword)) return false;
-
-    if(state.filter.favOnly && !isFav(s.name)) return false;
-
-    if(state.filter.area &&
-       s.tags?.area !== state.filter.area) return false;
-
-    if(state.filter.types.length){
-      if(state.filter.and){
-        if(!state.filter.types.every(t=>s.tags?.types?.includes(t))) return false;
-      }else{
-        if(!state.filter.types.some(t=>s.tags?.types?.includes(t))) return false;
-      }
-    }
-
-    return true;
-  });
-
-  list.forEach((s,i)=>{
+  state.spots.forEach((s,i)=>{
 
     const d=document.createElement("div");
     d.className="card";
 
     d.innerHTML=`
-      ${s.img?`<img src="${s.img}">`:""}
-      <div>
-        <h3>
-          ${s.name}
-          <button onclick="fav('${s.name}')">
-            ${isFav(s.name)?"⭐":"☆"}
-          </button>
-        </h3>
-
-        <div>${s.desc||""}</div>
-
-        <div style="font-size:12px;color:#666;">
-          ${s.tags?.area || ""} ${(s.tags?.types||[]).join(", ")}
+      <div class="card-main">
+        ${s.img?`<img src="${s.img}">`:""}
+        <div class="card-text">
+          <h3>
+            ${s.name}
+            <button onclick="fav('${s.name}')">
+              ${isFav(s.name)?"⭐":"☆"}
+            </button>
+          </h3>
+          <div>${s.desc||""}</div>
+          <div style="font-size:12px;color:#666;">
+            ${s.tags?.area || ""} ${(s.tags?.types||[]).join(", ")}
+          </div>
         </div>
+      </div>
 
+      <div class="card-actions">
         <button onclick="edit(${i})">編集</button>
         <button onclick="del(${i})">削除</button>
       </div>
@@ -456,32 +430,11 @@ function render(){
 function updateUI(){
   andBtn.classList.toggle("on",state.filter.and);
   favBtn.classList.toggle("on",state.filter.favOnly);
-
-  document.querySelectorAll(".tag-btn").forEach(b=>{
-    const t=b.innerText;
-
-    const active =
-      t===state.form.area ||
-      t===state.filter.area ||
-      state.form.types.includes(t) ||
-      state.filter.types.includes(t);
-
-    b.classList.toggle("active",active);
-  });
 }
 
-/* toggle */
-function toggleAnd(){
-  state.filter.and=!state.filter.and;
-  render();
-}
+function toggleAnd(){ state.filter.and=!state.filter.and; }
+function toggleFavFilter(){ state.filter.favOnly=!state.filter.favOnly; }
 
-function toggleFavFilter(){
-  state.filter.favOnly=!state.filter.favOnly;
-  render();
-}
-
-/* リセット */
 function resetForm(){
   nameEl.value="";
   descEl.value="";
